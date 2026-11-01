@@ -618,7 +618,8 @@ def evaluate_quality_gates(technology: str, metrics: dict[str, Any]) -> dict[str
         }
     elif capability == "review_student":
         checks = {
-            "teacher_macro_f1_gap": _metric_at_most(metrics, "teacher_macro_f1_gap", 0.03),
+            "held_out_evaluation": metrics.get("held_out_evaluation") is True,
+            "macro_f1": _metric_at_least(metrics, "macro_f1", 0.75),
             "ece": _metric_at_most(metrics, "ece", 0.08),
             "p95_latency_seconds": _metric_at_most(metrics, "p95_latency_seconds", 2.0),
         }

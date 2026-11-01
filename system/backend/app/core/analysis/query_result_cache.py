@@ -2,9 +2,9 @@
 
 The cache is deliberately below the HTTP layer.  A product endpoint can keep
 its existing response contract while avoiding repeated graph construction,
-artifact parsing, and evidence projection.  Every caller supplies a versioned
-key; freshness is therefore controlled by the source fingerprint or run
-identity rather than by a guessed time-to-live.
+artifact parsing, and evidence projection. Every caller supplies a versioned
+key; callers with a bounded freshness proof can additionally opt into an
+explicit short TTL.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import asyncio
 import copy
 import hashlib
 import json
+import math
 import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable, Mapping
@@ -22,7 +23,7 @@ from app.config import settings
 from app.db.redis import get_redis
 
 
-_local_cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
+_local_cache: OrderedDict[str, tuple[dict[str, Any], float | None]] = OrderedDict()
 _single_flight_locks: dict[str, asyncio.Lock] = {}
 _single_flight_refs: dict[str, int] = {}
 _redis_disabled_until = 0.0
@@ -46,8 +47,14 @@ def _copy_value(value: Mapping[str, Any]) -> dict[str, Any]:
     return copy.deepcopy(dict(value))
 
 
-def _remember_local(key: str, value: Mapping[str, Any]) -> None:
-    _local_cache[key] = _copy_value(value)
+def _remember_local(
+    key: str,
+    value: Mapping[str, Any],
+    *,
+    ttl_seconds: float | None = None,
+) -> None:
+    expires_at = time.monotonic() + ttl_seconds if ttl_seconds and ttl_seconds > 0 else None
+    _local_cache[key] = (_copy_value(value), expires_at)
     _local_cache.move_to_end(key)
     limit = max(1, int(settings.ANALYSIS_RESULT_CACHE_MAX_ENTRIES))
     while len(_local_cache) > limit:
@@ -75,7 +82,12 @@ async def _redis_get(key: str) -> dict[str, Any] | None:
         return None
 
 
-async def _redis_set(key: str, value: Mapping[str, Any]) -> None:
+async def _redis_set(
+    key: str,
+    value: Mapping[str, Any],
+    *,
+    ttl_seconds: float | None = None,
+) -> None:
     global _redis_disabled_until
     if not settings.ANALYSIS_RESULT_CACHE_REDIS_ENABLED:
         return
@@ -86,10 +98,14 @@ async def _redis_set(key: str, value: Mapping[str, Any]) -> None:
         # response. Do not coerce unsupported values to strings in Redis and
         # silently change numeric/date semantics on a cross-process hit.
         payload = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
-        ttl_seconds = max(0, int(settings.ANALYSIS_RESULT_CACHE_TTL_SECONDS))
-        if ttl_seconds:
+        effective_ttl = (
+            max(0, int(settings.ANALYSIS_RESULT_CACHE_TTL_SECONDS))
+            if ttl_seconds is None
+            else max(0, math.ceil(ttl_seconds))
+        )
+        if effective_ttl:
             await asyncio.wait_for(
-                get_redis().set(key, payload, ex=ttl_seconds),
+                get_redis().set(key, payload, ex=effective_ttl),
                 timeout=0.75,
             )
         else:
@@ -100,43 +116,63 @@ async def _redis_set(key: str, value: Mapping[str, Any]) -> None:
         _redis_disabled_until = time.monotonic() + 30.0
 
 
-async def get_query_result(key: str) -> dict[str, Any] | None:
+async def get_query_result(
+    key: str,
+    *,
+    ttl_seconds: float | None = None,
+) -> dict[str, Any] | None:
     """Read a projection from process memory or shared Redis."""
 
     if not settings.ANALYSIS_RESULT_CACHE_ENABLED:
         return None
-    value = _local_cache.get(key)
-    if value is not None:
-        _local_cache.move_to_end(key)
-        return _copy_value(value)
+    cached = _local_cache.get(key)
+    if cached is not None:
+        value, expires_at = cached
+        if expires_at is not None and time.monotonic() >= expires_at:
+            _local_cache.pop(key, None)
+        else:
+            _local_cache.move_to_end(key)
+            return _copy_value(value)
 
     value = await _redis_get(key)
     if value is not None:
-        _remember_local(key, value)
+        _remember_local(key, value, ttl_seconds=ttl_seconds)
         return _copy_value(value)
     return None
 
 
-async def put_query_result(key: str, value: Mapping[str, Any]) -> None:
+async def put_query_result(
+    key: str,
+    value: Mapping[str, Any],
+    *,
+    ttl_seconds: float | None = None,
+) -> None:
     """Store a JSON-compatible projection in both cache layers."""
 
     if not settings.ANALYSIS_RESULT_CACHE_ENABLED:
         return
     normalized = _copy_value(value)
-    _remember_local(key, normalized)
-    await _redis_set(key, normalized)
+    _remember_local(key, normalized, ttl_seconds=ttl_seconds)
+    await _redis_set(key, normalized, ttl_seconds=ttl_seconds)
 
 
 async def get_or_build_query_result(
     key: str,
     builder: Callable[[], Awaitable[Mapping[str, Any]]],
+    *,
+    should_cache: Callable[[Mapping[str, Any]], bool] | None = None,
+    ttl_seconds: float | None = None,
 ) -> dict[str, Any]:
-    """Return a cached projection and single-flight concurrent cache misses."""
+    """Return a cached projection and single-flight concurrent cache misses.
+
+    ``should_cache`` lets callers leave transient blocked results uncached while
+    keeping normal immutable projections on the fast path.
+    """
 
     if not settings.ANALYSIS_RESULT_CACHE_ENABLED:
         return _copy_value(await builder())
 
-    cached = await get_query_result(key)
+    cached = await get_query_result(key, ttl_seconds=ttl_seconds)
     if cached is not None:
         return cached
 
@@ -147,11 +183,12 @@ async def get_or_build_query_result(
     _single_flight_refs[key] = _single_flight_refs.get(key, 0) + 1
     try:
         async with lock:
-            cached = await get_query_result(key)
+            cached = await get_query_result(key, ttl_seconds=ttl_seconds)
             if cached is not None:
                 return cached
             built = _copy_value(await builder())
-            await put_query_result(key, built)
+            if should_cache is None or should_cache(built):
+                await put_query_result(key, built, ttl_seconds=ttl_seconds)
             return _copy_value(built)
     finally:
         references = _single_flight_refs.get(key, 1) - 1

@@ -147,23 +147,22 @@ test('review applies the latest case response directly without blocking on selec
     initialLoad.indexOf('} catch'),
   )
 
-  assert.match(latestFallback, /const latest = await getLatestReviewCase\(\)/)
-  assert.match(latestFallback, /await applyCase\(latest\.data\)/)
+  assert.match(latestFallback, /const response = await getLatestReviewCase\(\)/)
+  assert.match(latestFallback, /await applyCase\(response\.data\)/)
   assert.doesNotMatch(latestFallback, /loadCase\(/)
   assert.match(latestFallback, /void loadCaseOptions\(''\)/)
   assert.doesNotMatch(latestFallback, /await loadCaseOptions\(''\)/)
 })
 
-test('review loads evidence and activity projections concurrently after applying a case', () => {
+test('review defers audit data and only reads activities with the case', () => {
   const applyCase = bodyOf(riskView, 'applyCase')
 
-  assert.match(applyCase, /const pendingLoads: Promise<void>\[\] = \[\]/)
-  assert.match(applyCase, /pendingLoads\.push\(loadEvidenceGroup\(activeEvidenceGroup\.value\)\)/)
-  assert.match(applyCase, /pendingLoads\.push\(loadActivities\(detail\.case_id\)\)/)
-  assert.match(applyCase, /await Promise\.all\(pendingLoads\)/)
+  assert.match(applyCase, /await loadActivities\(detail\.case_id\)/)
+  assert.match(applyCase, /void loadStudent\(detail\.case_id\)/)
+  assert.doesNotMatch(applyCase, /getReviewCaseEvidence/)
 })
 
-test('evidence pagination uses an ASCII-safe visible label', () => {
-  assert.match(riskView, /\{\{ '\\u52a0\\u8f7d\\u66f4\\u591a' \}\}/)
-  assert.doesNotMatch(riskView, /鍔犺浇鏇村/)
+test('review overview does not contain the legacy evidence group panel', () => {
+  assert.doesNotMatch(riskView, /证据分组与标注/)
+  assert.doesNotMatch(riskView, /getReviewCaseEvidence/)
 })

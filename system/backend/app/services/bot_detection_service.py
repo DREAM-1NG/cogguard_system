@@ -8,7 +8,7 @@ import time
 from app.core.trained_bot_detection import run_trained_botrhg_detection
 from app.db.mongodb import get_mongo_db
 from app.db.mysql import async_session_factory
-from app.services.event_data import load_event_posts
+from app.services.event_data import load_event_account_activities
 from app.services.account_model_runtime_service import get_active_account_model_resolution
 from app.services.account_model_monitoring_service import (
     record_account_prediction_audits,
@@ -21,10 +21,11 @@ async def detect_social_bots(
     event_id: str | None = None,
     platform: str | None = None,
 ) -> dict:
-    """Run the trained account detector over collected posts."""
+    """Run the trained account detector over all collected authored activity."""
 
     mongo_db = get_mongo_db()
-    posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
+    activities = await load_event_account_activities(mongo_db, event_id=event_id, platform=platform)
+    source_counts = _activity_source_counts(activities)
     pointer = await get_active_account_model_resolution()
     active_model = pointer.model if pointer.status == "available" else None
     pointer_invalid = pointer.status == "invalid"
@@ -39,7 +40,9 @@ async def detect_social_bots(
             "summary": {
                 "account_count": 0,
                 "bot_count": 0,
-                "post_count": len(posts),
+                "post_count": source_counts["posts"],
+                "activity_count": len(activities),
+                "source_counts": source_counts,
             },
         }
     elif active_model is None:
@@ -51,11 +54,13 @@ async def detect_social_bots(
             "summary": {
                 "account_count": 0,
                 "bot_count": 0,
-                "post_count": len(posts),
+                "post_count": source_counts["posts"],
+                "activity_count": len(activities),
+                "source_counts": source_counts,
             },
         }
     else:
-        result = await _run_platform_scoped_detection(posts, active_model)
+        result = await _run_platform_scoped_detection(activities, active_model)
     runtime_failed = active_model is not None and result is None
     if runtime_failed:
         result = {
@@ -63,11 +68,13 @@ async def detect_social_bots(
             "status": "unavailable",
             "reason": "account_model_runtime_unavailable",
             "accounts": [],
-            "summary": {
-                "account_count": 0,
-                "bot_count": 0,
-                "post_count": len(posts),
-            },
+                "summary": {
+                    "account_count": 0,
+                    "bot_count": 0,
+                    "post_count": source_counts["posts"],
+                    "activity_count": len(activities),
+                    "source_counts": source_counts,
+                },
         }
     audit_model = active_model
     if pointer_invalid and pointer.model_version and pointer.pointer_revision > 0:
@@ -78,7 +85,7 @@ async def detect_social_bots(
             if pointer_invalid or runtime_failed:
                 audit_count = await record_account_runtime_error(
                     audit_session,
-                    posts=posts,
+                posts=activities,
                     model=audit_model,
                     event_id=event_id,
                     platform=platform,
@@ -92,7 +99,7 @@ async def detect_social_bots(
             else:
                 audit_count = await record_account_prediction_audits(
                     audit_session,
-                    posts=posts,
+                posts=activities,
                     result=result,
                     model=audit_model,
                     event_id=event_id,
@@ -113,8 +120,17 @@ async def detect_social_bots(
         )
     result["summary"]["event_id"] = event_id
     result["summary"]["platform"] = platform
-    result["summary"]["post_count"] = len(posts)
+    result["summary"]["post_count"] = source_counts["posts"]
+    result["summary"]["activity_count"] = len(activities)
+    result["summary"]["source_counts"] = source_counts
     return result
+
+
+def _activity_source_counts(activities: list[dict]) -> dict[str, int]:
+    return {
+        "posts": sum(activity.get("account_activity_type") != "comment" for activity in activities),
+        "comments": sum(activity.get("account_activity_type") == "comment" for activity in activities),
+    }
 
 
 async def _run_platform_scoped_detection(posts: list[dict], active_model) -> dict | None:

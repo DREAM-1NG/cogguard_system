@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.analysis import EventSnapshot
-from app.models.analysis import ReviewVerdictVersion
+from app.models.analysis import AnalysisRun, ReviewVerdictVersion
 from app.models.review_case import (
     CaseActivity,
     ReviewCase,
@@ -43,10 +43,21 @@ class CaseRevisionRef:
     created_revision: bool
 
 
+def _teacher_task_is_active(verdict_status: Any, task_id: Any) -> bool:
+    """A pending verdict blocks retries only while its queue task is traceable."""
+
+    return (
+        str(verdict_status or "") in {"draft", "queued", "running"}
+        and bool(str(task_id or "").strip())
+    )
+
+
 class ReviewCaseRepository(Protocol):
     async def upsert_revision(self, **kwargs: Any) -> CaseRevisionRef: ...
 
     async def apply_analysis_projection(self, **kwargs: Any) -> None: ...
+
+    async def apply_student_projection(self, **kwargs: Any) -> None: ...
 
     async def has_active_teacher(self, **kwargs: Any) -> bool: ...
 
@@ -223,6 +234,52 @@ class SqlAlchemyReviewCaseRepository:
         ).scalar_one()
         revision.analysis_run_id = analysis_run_id
         revision.analysis_completed_at = _now()
+        await self._apply_case_projection(
+            case=case,
+            revision=revision,
+            projection=projection,
+            created_by=created_by,
+        )
+
+    async def apply_student_projection(
+        self,
+        *,
+        ref: CaseRevisionRef,
+        projection: AnalysisProjection,
+        created_by: int,
+    ) -> None:
+        """Persist a Student-only projection without overwriting core-run lineage."""
+
+        case = (
+            await self.db.execute(
+                select(ReviewCase)
+                .where(ReviewCase.case_id == ref.case_id)
+                .with_for_update()
+            )
+        ).scalar_one()
+        revision = (
+            await self.db.execute(
+                select(ReviewCaseSnapshotRevision).where(
+                    ReviewCaseSnapshotRevision.snapshot_revision_id
+                    == ref.snapshot_revision_id
+                )
+            )
+        ).scalar_one()
+        await self._apply_case_projection(
+            case=case,
+            revision=revision,
+            projection=projection,
+            created_by=created_by,
+        )
+
+    async def _apply_case_projection(
+        self,
+        *,
+        case: ReviewCase,
+        revision: ReviewCaseSnapshotRevision,
+        projection: AnalysisProjection,
+        created_by: int,
+    ) -> None:
         case.preliminary_conclusion = projection.conclusion.value
         case.evidence_sufficiency = projection.evidence_sufficiency.value
         case.urgency = projection.urgency.value
@@ -262,7 +319,14 @@ class SqlAlchemyReviewCaseRepository:
             )
         )
         state = result.scalar_one_or_none()
-        return state is None or str(state) in {"draft", "queued", "running"}
+        if not revision.teacher_run_id:
+            return False
+        task_id = await self.db.scalar(
+            select(AnalysisRun.celery_task_id).where(
+                AnalysisRun.run_id == revision.teacher_run_id
+            )
+        )
+        return _teacher_task_is_active(state, task_id)
 
     async def record_teacher_submission(
         self,

@@ -7,6 +7,16 @@ export type AccountQueryParams = {
   event_id?: string
 }
 
+export type AccountProfilePage = {
+  items: Array<Record<string, any>>
+  total: number
+  attention: number
+  pending: number
+  platforms: string[]
+  page: number
+  page_size: number
+}
+
 export type AccountModelPointerStatus = {
   status?: 'available' | 'unavailable' | 'invalid' | string
   reason?: string
@@ -33,6 +43,10 @@ export type BotDetectionResult = {
 
 export function getAccountProfiles(params?: AccountQueryParams) {
   return accountRequest.get('/accounts/profiles', { params })
+}
+
+export function getAccountProfilePage(params?: AccountQueryParams & { page?: number; page_size?: number }) {
+  return accountRequest.get<unknown, { data: AccountProfilePage }>('/accounts/profiles/page', { params })
 }
 
 export function getAccountDetail(accountId: string, params?: AccountQueryParams) {

@@ -12,7 +12,7 @@ from app.core.analysis.executor import (
     UnavailableTeacherJobPort,
     default_analysis_engine_ports,
 )
-from app.core.analysis.registry import AnalysisRegistry
+from app.core.analysis.registry import AnalysisRegistry, SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY
 from app.core.analysis import UnknownAnalysisStage
 from app.core.semantic.runtime import ModelWeightsBlockedError, VerifiedPropagationArtifact
 
@@ -204,6 +204,7 @@ class RecordingSemanticEngine:
             "technology": "semantic_enrichment",
             "status": "ok",
             "runtime_status": "ready",
+            "embedding_manifest": {"snapshot_fingerprint": "semantic-test-fingerprint"},
             "layers": {"posts": [], "comments": []},
         }
 
@@ -541,6 +542,10 @@ def test_semantic_stage_receives_prior_results_and_blocks_without_fallback_when_
         assert propagation_input.data_fingerprint == snapshot.data_fingerprint
         assert result["results"]["semantic_enrichment"]["runtime_status"] == "ready"
         assert result["artifact_manifest"]["stages"]["semantic_enrichment"]["status"] == "ok"
+        assert (
+            result["artifact_manifest"]["stages"]["semantic_enrichment"]["page_read_model_artifact"]["artifact_key"]
+            == SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY
+        )
 
         class MissingWeightsSemanticEngine:
             async def enrich(self, *_args, **_kwargs):

@@ -7,7 +7,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -99,6 +99,53 @@ async def get_teacher_audit(
     _current_user: User = Depends(require_case_reader),
 ):
     return await _read_response(lambda: service.teacher_audit(case_id))
+
+
+@router.get("/{case_id}/student-assessment")
+async def get_student_assessment(
+    case_id: str,
+    service: ReviewCaseService = Depends(get_review_case_service),
+    _current_user: User = Depends(require_case_reader),
+):
+    return await _read_response(lambda: service.student_assessment(case_id))
+
+
+@router.post("/{case_id}/student-reassess")
+async def reassess_student(
+    case_id: str,
+    service: ReviewCaseService = Depends(get_review_case_service),
+    current_user: User = Depends(require_case_editor),
+):
+    return await _write_response(
+        lambda: service.reanalyze_student(case_id, actor=current_user),
+        db=service.db,
+    )
+
+
+@router.get("/{case_id}/countermeasure-report")
+async def get_countermeasure_report(
+    case_id: str,
+    service: ReviewCaseService = Depends(get_review_case_service),
+    _current_user: User = Depends(require_case_reader),
+):
+    return await _read_response(lambda: service.countermeasure_report(case_id))
+
+
+@router.get("/{case_id}/countermeasure-report.md")
+async def download_countermeasure_report(
+    case_id: str,
+    service: ReviewCaseService = Depends(get_review_case_service),
+    _current_user: User = Depends(require_case_reader),
+):
+    try:
+        content = await service.countermeasure_markdown(case_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return PlainTextResponse(
+        content,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{case_id}-countermeasure.md"'},
+    )
 
 
 @router.post("/{case_id}/review-requests")

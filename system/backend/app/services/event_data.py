@@ -147,6 +147,41 @@ async def load_event_comments(
     return await cursor.to_list(length=limit)
 
 
+async def load_event_account_activities(
+    mongo_db: Any,
+    *,
+    event_id: str | None = None,
+    platform: str | None = None,
+) -> list[dict[str, Any]]:
+    """Load the complete account activity scope without mutating source rows.
+
+    The account detector works over authored content.  Both a post and a
+    comment are authored content, but a comment's ``post_id`` identifies its
+    parent rather than the comment itself.  Keep that parent reference intact
+    and add a source-qualified activity ID for detector and audit identity.
+    """
+
+    posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
+    comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
+    return [
+        *(_account_activity_row(row, activity_type="post") for row in posts),
+        *(_account_activity_row(row, activity_type="comment") for row in comments),
+    ]
+
+
+def _account_activity_row(row: dict[str, Any], *, activity_type: str) -> dict[str, Any]:
+    activity = dict(row)
+    if activity_type == "comment":
+        source_id = str(activity.get("comment_id") or activity.get("dedupe_key") or "").strip()
+        parent_post_id = str(activity.get("post_id") or "").strip()
+        activity["parent_post_id"] = parent_post_id
+    else:
+        source_id = str(activity.get("post_id") or activity.get("id") or activity.get("dedupe_key") or "").strip()
+    activity["account_activity_type"] = activity_type
+    activity["account_activity_id"] = f"{activity_type}:{source_id}" if source_id else ""
+    return activity
+
+
 async def load_event_account_names(
     mongo_db: Any,
     *,
@@ -208,6 +243,7 @@ __all__ = [
     "analysis_scope_metadata",
     "build_event_filter",
     "event_data_fingerprint",
+    "load_event_account_activities",
     "load_event_account_names",
     "load_event_comments",
     "load_event_posts",

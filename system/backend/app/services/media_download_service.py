@@ -45,9 +45,19 @@ MEDIA_DOWNLOAD_JOB_TYPE = "media_download"
 MEDIA_DOWNLOAD_PLATFORM = "media_download"
 MEDIA_DOWNLOAD_TIMEOUT_SECONDS = 60.0
 MEDIA_DOWNLOAD_CONCURRENCY = 3
+MEDIA_DOWNLOAD_MAX_ATTEMPTS = 3
+MEDIA_DOWNLOAD_RETRY_DELAY_SECONDS = 1.0
 # Cap redirect following so a hostile CDN cannot bounce us onto an internal
 # address after the initial host check.
 MEDIA_DOWNLOAD_MAX_REDIRECTS = 3
+FAKE_IP_NETWORK = ipaddress.ip_network("198.18.0.0/15")
+TRUSTED_MEDIA_HOST_SUFFIXES = (
+    "douyin.com",
+    "douyinvod.com",
+    "douyinpic.com",
+    "xhscdn.com",
+    "xiaohongshu.com",
+)
 
 
 class BlockedMediaHostError(Exception):
@@ -67,6 +77,48 @@ def _is_public_ip(candidate: str) -> bool:
         or ip.is_multicast
         or ip.is_unspecified
     )
+
+
+def _configured_media_proxy() -> str | None:
+    proxy = str(settings.MEDIACRAWLER_PROXY or "").strip()
+    parsed = urlparse(proxy)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return None
+    return proxy
+
+
+def _uses_loopback_media_proxy() -> bool:
+    proxy = _configured_media_proxy()
+    if proxy is None:
+        return False
+    host = urlparse(proxy).hostname
+    if host is None:
+        return False
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _is_trusted_media_host(host: str) -> bool:
+    normalized = host.lower().rstrip(".")
+    return any(
+        normalized == suffix or normalized.endswith(f".{suffix}")
+        for suffix in TRUSTED_MEDIA_HOST_SUFFIXES
+    )
+
+
+def _allows_proxy_fake_ip(host: str, address: str) -> bool:
+    try:
+        return (
+            ipaddress.ip_address(address) in FAKE_IP_NETWORK
+            and _uses_loopback_media_proxy()
+            and _is_trusted_media_host(host)
+        )
+    except ValueError:
+        return False
 
 
 def assert_public_media_url(url: str) -> None:
@@ -105,7 +157,7 @@ def assert_public_media_url(url: str) -> None:
     if not addresses:
         raise BlockedMediaHostError(f"cannot resolve host {host}")
     for address in addresses:
-        if not _is_public_ip(address):
+        if not _is_public_ip(address) and not _allows_proxy_fake_ip(host, address):
             raise BlockedMediaHostError(f"host {host} resolves to non-public address {address}")
 
 
@@ -259,17 +311,16 @@ async def find_downloaded_post_media(
     post_id: str,
     user_id: int,
     db: AsyncSession,
+    include_all_completed: bool = False,
 ) -> list[dict[str, Any]]:
     """List manifest-backed local media for one platform-qualified post."""
 
-    result = await db.execute(
-        select(CrawlJob)
-        .where(
-            CrawlJob.job_type == MEDIA_DOWNLOAD_JOB_TYPE,
-            CrawlJob.created_by.in_([user_id, 0]),
-        )
-        .order_by(CrawlJob.created_at.desc())
-    )
+    filters = [CrawlJob.job_type == MEDIA_DOWNLOAD_JOB_TYPE]
+    if include_all_completed:
+        filters.append(CrawlJob.status == "completed")
+    else:
+        filters.append(CrawlJob.created_by.in_([user_id, 0]))
+    result = await db.execute(select(CrawlJob).where(*filters).order_by(CrawlJob.created_at.desc()))
     previews: list[dict[str, Any]] = []
     seen_paths: set[Path] = set()
     for job in result.scalars().all():
@@ -441,6 +492,7 @@ async def _run_media_download_job_async(job_id: int, params_json: str) -> dict[s
         follow_redirects=True,
         max_redirects=MEDIA_DOWNLOAD_MAX_REDIRECTS,
         headers=_download_headers(),
+        proxy=_configured_media_proxy(),
     ) as client:
         completed = 0
         results: list[dict[str, Any]] = []
@@ -514,42 +566,58 @@ async def _download_one(client: httpx.AsyncClient, item: dict[str, Any], semapho
             assert_public_media_url(str(item["url"]))
         except BlockedMediaHostError as exc:
             return {**item, "status": "failed", "error": f"blocked_host: {exc}"}
-        try:
-            async with client.stream("GET", str(item["url"])) as response:
-                if response.status_code >= 400:
-                    return {**item, "status": "failed", "error": f"HTTP {response.status_code}"}
-                content_type = response.headers.get("Content-Type")
-                corrected_target = _with_content_type_extension(target, str(item["url"]), str(item["media_type"]), content_type)
-                if corrected_target != target:
-                    item = {**item, "local_path": str(corrected_target)}
-                    target = corrected_target
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    if target.exists() and target.stat().st_size > 0:
-                        return {**item, "status": "skipped", "bytes": target.stat().st_size, "reason": "file_exists"}
-
-                tmp_path = target.with_suffix(target.suffix + ".part")
-                bytes_written = 0
-                with tmp_path.open("wb") as handle:
-                    async for chunk in response.aiter_bytes():
-                        if not chunk:
-                            continue
-                        handle.write(chunk)
-                        bytes_written += len(chunk)
-                tmp_path.replace(target)
-                return {
-                    **item,
-                    "status": "downloaded",
-                    "bytes": bytes_written,
-                    "content_type": content_type,
-                }
-        except Exception as exc:
+        for attempt in range(1, MEDIA_DOWNLOAD_MAX_ATTEMPTS + 1):
             tmp_path = target.with_suffix(target.suffix + ".part")
-            if tmp_path.exists():
-                try:
-                    tmp_path.unlink()
-                except OSError:
-                    pass
-            return {**item, "status": "failed", "error": f"{type(exc).__name__}: {exc}"}
+            try:
+                async with client.stream("GET", str(item["url"])) as response:
+                    if response.status_code >= 400:
+                        return {**item, "status": "failed", "error": f"HTTP {response.status_code}"}
+                    content_type = response.headers.get("Content-Type")
+                    corrected_target = _with_content_type_extension(target, str(item["url"]), str(item["media_type"]), content_type)
+                    if corrected_target != target:
+                        item = {**item, "local_path": str(corrected_target)}
+                        target = corrected_target
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        if target.exists() and target.stat().st_size > 0:
+                            return {**item, "status": "skipped", "bytes": target.stat().st_size, "reason": "file_exists"}
+                        tmp_path = target.with_suffix(target.suffix + ".part")
+
+                    bytes_written = 0
+                    with tmp_path.open("wb") as handle:
+                        async for chunk in response.aiter_bytes():
+                            if not chunk:
+                                continue
+                            handle.write(chunk)
+                            bytes_written += len(chunk)
+                    tmp_path.replace(target)
+                    return {
+                        **item,
+                        "status": "downloaded",
+                        "bytes": bytes_written,
+                        "content_type": content_type,
+                    }
+            except (httpx.HTTPError, OSError) as exc:
+                if tmp_path.exists():
+                    try:
+                        tmp_path.unlink()
+                    except OSError:
+                        pass
+                if attempt == MEDIA_DOWNLOAD_MAX_ATTEMPTS:
+                    return {
+                        **item,
+                        "status": "failed",
+                        "error": f"{type(exc).__name__} after {attempt} attempts: {exc}",
+                    }
+                await asyncio.sleep(MEDIA_DOWNLOAD_RETRY_DELAY_SECONDS * attempt)
+            except Exception as exc:
+                if tmp_path.exists():
+                    try:
+                        tmp_path.unlink()
+                    except OSError:
+                        pass
+                return {**item, "status": "failed", "error": f"{type(exc).__name__}: {exc}"}
+
+        return {**item, "status": "failed", "error": "download attempts exhausted"}
 
 
 def _with_content_type_extension(target: Path, url: str, media_type: str, content_type: str | None) -> Path:

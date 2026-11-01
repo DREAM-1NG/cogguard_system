@@ -731,7 +731,7 @@ def _post_text(post: dict[str, Any]) -> str:
 
 
 def _post_identifier(post: dict[str, Any]) -> str:
-    return _post_value(post, "post_id", "id", "mid")
+    return _post_value(post, "account_activity_id", "post_id", "comment_id", "id", "mid")
 
 
 def _post_value(post: dict[str, Any], *names: str) -> str:

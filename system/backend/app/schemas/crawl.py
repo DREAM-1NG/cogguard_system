@@ -82,6 +82,10 @@ class PostResponse(BaseModel):
     media_urls: list[str] = Field(default_factory=list)
     hashtags: list[str] = Field(default_factory=list)
     author_profile: dict | None = None
+    local_media: dict = Field(
+        default_factory=lambda: {"available_count": 0, "types": []},
+        description="仅含已校验本地媒体的可用数量和类型，不暴露文件路径。",
+    )
 
 
 class PostListResponse(BaseModel):

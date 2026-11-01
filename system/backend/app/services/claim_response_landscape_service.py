@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+from bisect import bisect_right
 from collections import Counter, defaultdict, deque
 from datetime import datetime, timezone
 from typing import Any
@@ -16,12 +18,14 @@ from app.core.analysis.registry import (
     SEMANTIC_ARTIFACT_KEY,
     SqlAlchemyAnalysisStore,
 )
+from app.core.analysis.query_result_cache import build_query_cache_key, get_or_build_query_result
 from app.db.mongodb import get_mongo_db
 from app.db.mysql import async_session_factory
 from app.models.case_workbench import AuthoritySource, AuthoritySourceAccount, CaseClaim, CaseRecord
 from app.services import propagation_observation_service
 from app.services.event_data import (
     analysis_scope_metadata,
+    event_data_fingerprint,
     load_event_comments,
     load_event_posts,
 )
@@ -43,6 +47,7 @@ async def build_claim_response_landscape(
     db: AsyncSession | None = None,
     mongo_db: Any | None = None,
     semantic_projection: dict[str, Any] | None = None,
+    _use_cache: bool = True,
 ) -> dict[str, Any]:
     """Build an event-scoped observed landscape around the primary case claim."""
 
@@ -56,6 +61,7 @@ async def build_claim_response_landscape(
                 db=session,
                 mongo_db=mongo_db,
                 semantic_projection=semantic_projection,
+                _use_cache=_use_cache,
             )
 
     if mongo_db is None:
@@ -111,6 +117,35 @@ async def build_claim_response_landscape(
         if row.review_status == "allowlisted"
     ]
     bindings = await _load_authority_accounts_for_sources(db, allowlisted_source_ids, platform=platform)
+    if semantic_projection is None and _use_cache:
+        source_version = await _source_generation(mongo_db, event_id=event_id, platform=platform)
+        semantic_version = await _semantic_projection_cache_identity(
+            event_id=event_id,
+            db=db,
+            mongo_db=mongo_db,
+        )
+        if source_version is not None and semantic_version is not None:
+            cache_key = build_query_cache_key(
+                "claim-response-landscape-v1",
+                event_id,
+                platform or "*",
+                source_version,
+                _landscape_configuration_identity(case, claim, source, claim_sources, bindings),
+                semantic_version,
+            )
+            return await get_or_build_query_result(
+                cache_key,
+                lambda: build_claim_response_landscape(
+                    event_id,
+                    platform=platform,
+                    db=db,
+                    mongo_db=mongo_db,
+                    semantic_projection=None,
+                    _use_cache=False,
+                ),
+                should_cache=_is_cacheable_landscape_projection,
+            )
+
     posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
     comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
     if semantic_projection is None:
@@ -192,6 +227,126 @@ async def build_claim_response_landscape(
             comments_count=len(comments),
         ),
     }
+
+
+async def _source_generation(
+    mongo_db: Any,
+    *,
+    event_id: str,
+    platform: str | None,
+) -> str | None:
+    """Return the ingestion generation that safely versions cached views."""
+
+    try:
+        return await event_data_fingerprint(mongo_db, event_id=event_id, platform=platform)
+    except Exception:
+        # Missing generation metadata cannot authorize serving cached evidence.
+        return None
+
+
+async def _semantic_projection_cache_identity(
+    *,
+    event_id: str,
+    db: AsyncSession,
+    mongo_db: Any,
+) -> str | None:
+    """Hash the semantic run identities that may change this projection."""
+
+    registry = AnalysisRegistry(mongo_db=mongo_db, store=SqlAlchemyAnalysisStore(db))
+    try:
+        candidates = await registry.list_semantic_artifact_candidates(event_id)
+    except Exception:
+        # Keep the full fail-closed path when run identity cannot be verified.
+        return None
+    return _identity_digest(
+        [
+            {
+                "run_id": _optional_text(candidate.get("run_id")),
+                "snapshot_id": _optional_text(candidate.get("snapshot_id")),
+                "status": _optional_text(candidate.get("status")),
+                "updated_at": _optional_text(candidate.get("updated_at")),
+                "artifact_manifest": candidate.get("artifact_manifest"),
+            }
+            for candidate in candidates
+        ]
+    )
+
+
+def _landscape_configuration_identity(
+    case: CaseRecord,
+    claim: CaseClaim,
+    source: AuthoritySource,
+    claim_sources: list[AuthoritySource],
+    bindings: list[AuthoritySourceAccount],
+) -> str:
+    """Version the reviewed claim and exact authority-account bindings."""
+
+    return _identity_digest(
+        {
+            "case": {
+                "case_id": case.case_id,
+                "event_id": case.event_id,
+                "lifecycle": case.lifecycle,
+            },
+            "claim": {
+                "claim_id": claim.claim_id,
+                "authority_source_id": claim.authority_source_id,
+                "exact_quote": claim.exact_quote,
+                "quote_start": claim.quote_start,
+                "quote_end": claim.quote_end,
+                "source_url": claim.source_url,
+                "account": claim.account,
+                "published_at": _iso(claim.published_at),
+                "role": claim.role,
+                "source_tier_snapshot": claim.source_tier_snapshot,
+                "source_review_snapshot": claim.source_review_snapshot,
+                "content_sha256": claim.content_sha256,
+            },
+            "source": _authority_source_identity(source),
+            "claim_sources": [
+                _authority_source_identity(row)
+                for row in sorted(claim_sources, key=lambda row: row.source_id)
+            ],
+            "bindings": [
+                {
+                    "source_id": row.source_id,
+                    "platform": row.platform,
+                    "author_id": row.author_id,
+                    "display_name_snapshot": row.display_name_snapshot,
+                    "verification_snapshot": row.verification_snapshot,
+                    "reviewed_by": row.reviewed_by,
+                }
+                for row in sorted(
+                    bindings,
+                    key=lambda row: (row.source_id, row.platform, row.author_id),
+                )
+            ],
+        }
+    )
+
+
+def _authority_source_identity(source: AuthoritySource) -> dict[str, Any]:
+    return {
+        "source_id": source.source_id,
+        "name": source.name,
+        "url": source.url,
+        "review_status": source.review_status,
+        "tier": source.tier,
+        "reviewed_by": source.reviewed_by,
+    }
+
+
+def _identity_digest(value: Any) -> str:
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _is_cacheable_landscape_projection(projection: dict[str, Any]) -> bool:
+    """Cache only a complete semantic view; blocked evidence must be retried."""
+
+    coverage = projection.get("coverage") if isinstance(projection.get("coverage"), dict) else {}
+    semantic = coverage.get("semantic") if isinstance(coverage.get("semantic"), dict) else {}
+    return projection.get("status") == "ready" and semantic.get("status") == "available"
 
 
 async def _load_case(db: AsyncSession, event_id: str) -> CaseRecord | None:
@@ -1202,23 +1357,26 @@ def _downstream_reach_sort_value(row: dict[str, Any]) -> int:
 def _platform_engagement_percentiles(posts: list[dict[str, Any]], comments: list[dict[str, Any]]) -> dict[str, float]:
     values_by_platform: dict[str, list[float]] = defaultdict(list)
     values_by_ref: dict[str, float] = {}
-    for row, ref_builder in [
-        *[(post, _post_ref) for post in posts],
-        *[(comment, _comment_ref) for comment in comments],
-    ]:
-        ref = ref_builder(row)
-        if ref is None:
-            continue
-        value = _engagement(row)
-        values_by_ref[ref] = value
-        values_by_platform[_reference_platform(ref)].append(value)
+    for rows, ref_builder in ((posts, _post_ref), (comments, _comment_ref)):
+        for row in rows:
+            ref = ref_builder(row)
+            if ref is None:
+                continue
+            value = _engagement(row)
+            values_by_ref[ref] = value
+            values_by_platform[_reference_platform(ref)].append(value)
+
+    sorted_values_by_platform = {
+        platform: sorted(values)
+        for platform, values in values_by_platform.items()
+    }
     percentiles: dict[str, float] = {}
     for ref, value in values_by_ref.items():
-        platform_values = sorted(values_by_platform[_reference_platform(ref)])
+        platform_values = sorted_values_by_platform[_reference_platform(ref)]
         if not platform_values:
             percentiles[ref] = 0.0
             continue
-        less_or_equal = sum(1 for item in platform_values if item <= value)
+        less_or_equal = bisect_right(platform_values, value)
         percentiles[ref] = round(less_or_equal / len(platform_values), 4)
     return percentiles
 

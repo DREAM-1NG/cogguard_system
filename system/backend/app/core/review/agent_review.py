@@ -69,6 +69,8 @@ from app.core.review.evidence_contracts import apply_claim_assessment
 from app.core.review.evidence_contracts import initialize_claim_evidence_bundle
 from app.core.review.governance_reference import build_governance_reference_context
 from app.core.review.governance_reference import build_governance_report_sidecar
+from app.core.review.countermeasure_report import build_countermeasure_gate
+from app.core.review.countermeasure_report import build_countermeasure_report
 from app.core.review.propagation_agent import has_propagation_tree_context
 from app.core.review.propagation_agent import select_propagation_context
 
@@ -156,6 +158,8 @@ async def run_manual_agent_review(
     reflection_target_agent_names: list[str] | None = None,
     max_agent_calls_per_case: int = 12,
     review_task: str | None = None,
+    run_judge: bool = True,
+    run_experts: bool = True,
 ) -> dict[str, Any]:
     """Run analyst-triggered natural-language Review agent reports."""
     normalized_agents = _normalize_agent_names(agent_names)
@@ -199,6 +203,15 @@ async def run_manual_agent_review(
         report=report,
         context=context,
     )
+    if not run_judge:
+        execution_plan = {
+            **execution_plan,
+            "followup_agents": [
+                name for name in execution_plan["followup_agents"]
+                if name != "HarmfulnessJudgeAgent"
+            ],
+            "run_countermeasure": False,
+        }
     context["execution_plan"] = execution_plan
     state: dict[str, Any] = {
         "max_agent_calls_per_case": max(1, int(max_agent_calls_per_case or 1)),
@@ -278,6 +291,7 @@ async def run_manual_agent_review(
             "reflection_target_agent_names": reflection_target_agent_names or [],
             "max_agent_calls_per_case": max_agent_calls_per_case,
             "review_task": normalized_review_task,
+            "run_judge": run_judge,
             "debate_max_rounds": debate_max_rounds,
             "policy_id": (policy or {}).get("policy_id"),
             "context": context,
@@ -311,7 +325,7 @@ async def run_manual_agent_review(
     }
 
     results: list[dict[str, Any]] = []
-    expert_agents = execution_plan["expert_agents"]
+    expert_agents = execution_plan["expert_agents"] if run_experts else []
     followup_agents = execution_plan["followup_agents"]
     planned_llm_call_count = _planned_llm_call_count(
         expert_agents=expert_agents,
@@ -395,7 +409,11 @@ async def run_manual_agent_review(
         reports_by_agent.update(_completed_by_agent([judge_results[-1]]))
 
     countermeasure_requested = "CountermeasureAgent" in normalized_agents
-    countermeasure_allowed = execution_plan["run_countermeasure"]
+    countermeasure_gate = build_countermeasure_gate(
+        context=context,
+        reports_by_agent=reports_by_agent,
+    )
+    countermeasure_allowed = execution_plan["run_countermeasure"] and countermeasure_gate["eligible"]
     if countermeasure_allowed and (
         countermeasure_requested or _should_postpone_countermeasure(report=report, reports_by_agent=reports_by_agent)
     ):
@@ -410,6 +428,13 @@ async def run_manual_agent_review(
         ]
         results.extend(countermeasure_results)
         reports_by_agent.update(_completed_by_agent([countermeasure_results[-1]]))
+    countermeasure_report = build_countermeasure_report(
+        case_id=str(case_id or ""),
+        snapshot_id=str(report.get("snapshot_id") or report.get("report_id") or ""),
+        teacher_audit_id=str(report.get("report_id") or case_id or ""),
+        reports_by_agent=reports_by_agent,
+        gate=countermeasure_gate,
+    )
 
     audit = {
         "run_id": run_id,
@@ -464,6 +489,7 @@ async def run_manual_agent_review(
         "countermeasure_post_judge_only": True,
         "countermeasure_enabled": enable_countermeasure,
         },
+        "countermeasure_gate": countermeasure_gate,
     }
     return {
         "schema_version": "review-manual-agent-review-v1",
@@ -501,6 +527,8 @@ async def run_manual_agent_review(
             "countermeasure_enabled": enable_countermeasure,
             "review_task": normalized_review_task,
         },
+        "countermeasure_gate": countermeasure_gate,
+        "countermeasure_report": countermeasure_report,
     }
 
 

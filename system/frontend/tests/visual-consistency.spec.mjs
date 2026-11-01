@@ -10,6 +10,7 @@ const layout = readFileSync(resolve(frontendRoot, 'src/components/layout/BasicLa
 const router = readFileSync(resolve(frontendRoot, 'src/router/index.ts'), 'utf8')
 const risk = readFileSync(resolve(frontendRoot, 'src/views/risk/index.vue'), 'utf8')
 const semantic = readFileSync(resolve(frontendRoot, 'src/components/SemanticEvidenceWorkbench.vue'), 'utf8')
+const semanticPage = readFileSync(resolve(frontendRoot, 'src/views/semantic-analysis/index.vue'), 'utf8')
 const propagation = readFileSync(resolve(frontendRoot, 'src/views/propagation/index.vue'), 'utf8')
 const coordination = readFileSync(resolve(frontendRoot, 'src/views/coordination/index.vue'), 'utf8')
 const graph = readFileSync(resolve(frontendRoot, 'src/views/coordination/CoordinationGraph3D.vue'), 'utf8')
@@ -85,23 +86,28 @@ test('removes the duplicate analysis route and navigation entry', () => {
   assert.doesNotMatch(layout, /label: '语义辅助'/)
 })
 
-test('risk evidence uses responsive evidence tables and URL-persisted semantic state', () => {
+test('risk links to one semantic workspace without embedding its artifact work', () => {
   assert.match(risk, /useRoute\(\)/)
   assert.match(risk, /router\.replace\(/)
-  assert.match(risk, /semantic-matrix-table/)
-  assert.match(risk, /min-width: 0/)
-  assert.match(risk, /evidence-source-link/)
+  assert.match(risk, /RiskSectionTabs/)
+  assert.doesNotMatch(risk, /SemanticEvidenceWorkbench/)
+  assert.match(semanticPage, /getSemanticWorkspace/)
+  assert.match(semanticPage, /<APagination/)
+  assert.match(semanticPage, /RiskSectionTabs/)
+  assert.doesNotMatch(semanticPage, /getSemanticPageProjection/)
 })
 
-test('keeps event review summary cards content-sized instead of stretching empty space', () => {
-  assert.match(risk, /\.summary-grid\s*\{[\s\S]*?align-items: start/)
+test('keeps the event review overview compact instead of stretching empty panels', () => {
+  assert.match(risk, /\.overview-strip\s*\{[\s\S]*?grid-template-columns/)
+  assert.match(risk, /\.workbench-grid\s*\{[\s\S]*?align-items:start/)
   assert.doesNotMatch(risk, /\.summary-card\s*\{\s*min-height:/)
 })
 
-test('uses a readable hierarchy for semantic evidence controls and matrix text', () => {
-  assert.match(semantic, /\.toolbar-label,[^}]*font-size: 14px/)
-  assert.match(semantic, /\.semantic-matrix-table \{[^}]*font-size: 14px/)
-  assert.match(risk, /\.semantic-summary-label,[\s\S]*font-size: 13px/)
+test('uses a readable hierarchy for the compact semantic evidence workspace', () => {
+  assert.match(semanticPage, /\.scope-field > span,[^}]*font-size: 12px/)
+  assert.match(semanticPage, /\.workspace-status strong \{[^}]*font-size: 18px/)
+  assert.match(semanticPage, /\.traceable-table th, \.traceable-table td \{[^}]*font-size: 13px/)
+  assert.match(semanticPage, /\.workspace-panel \{[^}]*padding: 14px/)
 })
 
 test('keeps a visible keyboard focus ring on semantic filters', () => {
@@ -140,4 +146,26 @@ test('coordination graph honors reduced motion and provides a text summary', () 
 test('dashboard exposes an explicit map loading state', () => {
   assert.match(dashboard, /地图加载中|正在加载地图/)
   assert.match(dashboard, /地图加载失败|重试加载地图/)
+})
+
+test('aligns the desktop map with its diagnostic column and treats generated time as neutral metadata', () => {
+  assert.match(dashboard, /class="map-card"/)
+  assert.match(dashboard, /class="platform-card"/)
+  assert.match(dashboard, /class="recent-card"/)
+  assert.match(dashboard, /数据更新时间/)
+  assert.match(dashboard, /<time :datetime="overview\.meta\.generated_at">/)
+  assert.match(dashboard, /\.map-shell\s*\{[\s\S]*?min-height:\s*620px/)
+  assert.match(dashboard, /\.map-card :deep\(\.ant-card-body\)\s*\{[^}]*flex-direction:\s*column/)
+  assert.match(dashboard, /\.map-shell\s*\{[^}]*flex:\s*1 1 auto/)
+  assert.match(dashboard, /@media \(min-width: 1200px\)[\s\S]*?\.side-column\s*\{[\s\S]*?min-height:\s*620px/)
+  assert.match(dashboard, /\.side-recent-list\s*\{[\s\S]*?max-height:\s*none/)
+})
+
+test('uses the shared blue-gray workbench language for the dashboard audit strip', () => {
+  assert.match(dashboard, /\.case-audit-strip\s*\{[^}]*border:\s*1px solid #d9e2f2/)
+  assert.match(dashboard, /\.case-audit-strip\s*\{[^}]*border-left:\s*4px solid #1677ff/)
+  assert.match(dashboard, /\.case-audit-strip\s*\{[^}]*background:\s*#fff/)
+  assert.match(dashboard, /\.case-audit-kicker\s*\{[^}]*color:\s*#64748b/)
+  assert.match(dashboard, /\.case-governance\s*\{[^}]*border-left:\s*1px solid #e5e7eb/)
+  assert.doesNotMatch(dashboard, /\.case-audit-strip\s*\{[^}]*#dbe7d4/)
 })

@@ -113,7 +113,8 @@ def test_registered_artifact_must_resolve_inside_root_and_match_manifest(tmp_pat
                 "technology": "review_student",
                 "checkpoint_path": "checkpoint.pt",
                 "metrics": {
-                    "teacher_macro_f1_gap": 0.02,
+                    "held_out_evaluation": True,
+                    "macro_f1": 0.82,
                     "ece": 0.07,
                     "p95_latency_seconds": 1.8,
                 },
@@ -158,7 +159,8 @@ def test_directory_manifest_checkpoint_cannot_escape_its_artifact_directory(tmp_
                 "technology": "review_student",
                 "checkpoint_path": "../v2/checkpoint.pt",
                 "metrics": {
-                    "teacher_macro_f1_gap": 0.02,
+                    "held_out_evaluation": True,
+                    "macro_f1": 0.82,
                     "ece": 0.07,
                     "p95_latency_seconds": 1.8,
                 },
@@ -191,7 +193,7 @@ def test_directory_manifest_checkpoint_cannot_escape_its_artifact_directory(tmp_
         ),
         (
             "review_student",
-            {"teacher_macro_f1_gap": 0.04, "ece": 0.07, "p95_latency_seconds": 1.0},
+            {"held_out_evaluation": True, "macro_f1": 0.74, "ece": 0.07, "p95_latency_seconds": 1.0},
             False,
         ),
         (

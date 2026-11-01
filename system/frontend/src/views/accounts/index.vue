@@ -2,28 +2,38 @@
   <div class="account-workbench">
     <PageHeader title="账号画像">
       <template #description>
-        汇总账号发言、BotRHG 研判结果和超图相近账号，辅助分析员定位需要复核的账号。
+        查看账号研判、近期发言和相似账号，辅助分析员定位需要复核的行为模式。
       </template>
     </PageHeader>
 
     <section class="filter-bar" aria-label="账号画像筛选">
       <a-space wrap :size="8">
+        <label class="sr-only" for="account-event-id">事件 ID</label>
         <a-input
+          id="account-event-id"
           v-model:value="eventId"
           class="filter-input"
           size="small"
-          placeholder="事件 ID，可选"
+          name="account-event-id"
+          autocomplete="off"
+          placeholder="事件 ID，可选…"
+          aria-label="事件 ID"
           allow-clear
+          @press-enter="applyEventScope"
         />
+        <label class="sr-only" for="account-platform">平台</label>
         <a-select
+          id="account-platform"
           v-model:value="platform"
           class="platform-select"
           size="small"
           placeholder="全部平台"
+          aria-label="平台"
           allow-clear
           :options="platformOptions"
+          @change="handlePlatformChange"
         />
-        <a-button size="small" :loading="loading" @click="refreshProfiles">
+        <a-button size="small" :loading="loading" @click="applyEventScope">
           <ReloadOutlined />
           刷新画像
         </a-button>
@@ -42,11 +52,9 @@
 
     <section class="overview-grid" aria-label="账号检测摘要">
       <a-card size="small" class="overview-card">
-        <template #title>检测结果</template>
+        <template #title>研判结果</template>
         <template #extra>
-          <a-tag :color="detectionStatusColor">
-            {{ detectionStatusText }}
-          </a-tag>
+          <a-tag :color="detectionStatusColor">{{ detectionStatusText }}</a-tag>
         </template>
         <div class="metric-strip">
           <div class="metric-item">
@@ -54,28 +62,26 @@
             <strong>{{ detectionSummary.account_count }}</strong>
           </div>
           <div class="metric-item attention">
-            <span>BotRHG 判别</span>
+            <span>需关注</span>
             <strong>{{ detectionSummary.bot_count }}</strong>
           </div>
           <div class="metric-item">
             <span>发言</span>
-            <strong>{{ detectionSummary.post_count }}</strong>
+            <strong>{{ detectionSummary.activity_count }}</strong>
           </div>
         </div>
-        <p class="card-note">
-          {{ detectionNarrative }}
-        </p>
+        <p class="card-note">{{ detectionNarrative }}</p>
       </a-card>
 
       <a-card size="small" class="overview-card">
-        <template #title>当前列表</template>
+        <template #title>当前范围</template>
         <div class="metric-strip">
           <div class="metric-item">
-            <span>总账号</span>
+            <span>账号</span>
             <strong>{{ profileStats.total }}</strong>
           </div>
           <div class="metric-item attention">
-            <span>BotRHG 判别</span>
+            <span>需关注</span>
             <strong>{{ profileStats.attention }}</strong>
           </div>
           <div class="metric-item">
@@ -83,143 +89,162 @@
             <strong>{{ profileStats.pending }}</strong>
           </div>
         </div>
-        <p class="card-note">平台覆盖：{{ platformCoverage }}</p>
+        <p class="card-note">平台覆盖：{{ platformCoverage }} · 已载入 {{ profiles.length }} 条优先账号</p>
       </a-card>
     </section>
 
-    <a-card size="small" class="profile-table-card">
-      <template #title>账号列表</template>
-      <template #extra>
-        <a-space :size="8">
-          <a-tag color="gold">BotRHG 判别 {{ profileStats.attention }}</a-tag>
-          <a-tag>待研判 {{ profileStats.pending }}</a-tag>
-        </a-space>
-      </template>
+    <section class="account-master-detail" aria-label="账号研判工作台">
+      <section class="account-list-pane" aria-labelledby="account-list-title">
+        <header class="pane-header">
+          <div>
+            <h2 id="account-list-title">账号列表</h2>
+            <p>显示 {{ profiles.length }} / {{ profileStats.total }} 个账号，按当前研判优先级排列</p>
+          </div>
+          <span class="pane-meta">优先账号</span>
+        </header>
 
-      <a-spin :spinning="loading">
-        <a-table
-          v-if="profiles.length"
-          :columns="columns"
-          :dataSource="profiles"
-          :rowKey="profileRowKey"
-          :pagination="{ pageSize, showSizeChanger: false }"
-          size="middle"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'author_name'">
-              <button type="button" class="link-button" @click="openDetail(record)">
-                {{ displayName(record) }}
+        <a-alert
+          v-if="profileError"
+          class="pane-alert"
+          type="warning"
+          show-icon
+          message="账号列表加载失败"
+          :description="profileError"
+        />
+
+        <div class="account-list-scroll" tabindex="0" aria-label="滚动账号列表">
+          <a-spin :spinning="loading" class="account-list-loading">
+            <div v-if="profiles.length" class="account-list" role="list" aria-label="账号列表">
+              <button
+                v-for="record in profiles"
+                :key="profileRowKey(record)"
+                type="button"
+                class="account-list-row"
+                :class="{ 'is-selected': isSelectedAccount(record) }"
+                :aria-pressed="isSelectedAccount(record)"
+                :aria-label="`查看账号 ${displayName(record)}`"
+                :ref="(element) => captureAccountListRow(record, element)"
+                @click="selectAccount(record)"
+              >
+                <span class="account-list-heading">
+                  <strong>{{ displayName(record) }}</strong>
+                  <a-tag>{{ platformLabel(record.platform) }}</a-tag>
+                </span>
+                <span class="account-list-meta">
+                  <span>{{ record.post_count ?? 0 }} 条发言</span>
+                  <span>{{ assessmentLabel(record.assessment?.level) }}</span>
+                </span>
+                <span class="account-list-probability">
+                  <span>机器人概率</span>
+                  <strong>{{ probabilityLabel(record.assessment?.bot_probability) }}</strong>
+                </span>
               </button>
-              <div class="account-subtitle">{{ scopedAccountLabel(record) }}</div>
+            </div>
+            <a-empty v-else-if="!loading" description="当前范围暂无账号画像数据" />
+          </a-spin>
+        </div>
+      </section>
+
+      <section class="account-detail-pane" aria-labelledby="account-detail-title" aria-live="polite">
+        <a-skeleton v-if="detailLoading && !detail" active :paragraph="{ rows: 8 }" />
+        <a-empty v-else-if="!detail" description="从左侧选择账号查看画像" />
+
+        <template v-else>
+          <header class="detail-header">
+            <div class="detail-title-wrap">
+              <span class="detail-eyebrow">当前账号</span>
+              <h2 id="account-detail-title">{{ displayName(detail) }}</h2>
+              <p>{{ scopedAccountLabel(detail) }}</p>
+            </div>
+            <a-tag :color="assessmentColor(detail.assessment?.level)">
+              {{ assessmentLabel(detail.assessment?.level) }}
+            </a-tag>
+          </header>
+
+          <a-alert
+            v-if="detailError"
+            class="detail-alert"
+            type="warning"
+            show-icon
+            message="账号详情未完全加载"
+            :description="detailError"
+          >
+            <template #action>
+              <a-button size="small" @click="retryDetail">重试</a-button>
             </template>
-            <template v-else-if="column.key === 'platform'">
-              <a-tag>{{ platformLabel(record.platform) }}</a-tag>
-            </template>
-            <template v-else-if="column.key === 'assessment'">
-              <a-tag :color="assessmentColor(record.assessment?.level)">
-                {{ assessmentLabel(record.assessment?.level) }}
-              </a-tag>
-            </template>
-            <template v-else-if="column.key === 'prediction'">
-              <span>{{ predictionLabel(record.assessment?.prediction) }}</span>
-            </template>
-            <template v-else-if="column.key === 'bot_probability'">
-              <div class="probability-cell">
-                <span>{{ probabilityLabel(record.assessment?.bot_probability) }}</span>
-                <div class="probability-track" aria-hidden="true">
-                  <div
-                    class="probability-fill"
-                    :class="{ high: probabilityNumber(record.assessment?.bot_probability) >= 0.5 }"
-                    :style="{ width: probabilityPercent(record.assessment?.bot_probability) }"
-                  />
-                </div>
+          </a-alert>
+
+          <section class="profile-facts" aria-label="账号概要">
+            <div class="profile-fact">
+              <span>发言数</span>
+              <strong>{{ detail.post_count ?? 0 }}</strong>
+            </div>
+            <div class="profile-fact">
+              <span>机器人概率</span>
+              <strong>{{ probabilityLabel(detail.assessment?.bot_probability) }}</strong>
+            </div>
+            <div class="profile-fact">
+              <span>活跃时段</span>
+              <strong>{{ activeHoursLabel(detail.active_hours) }}</strong>
+            </div>
+            <div class="profile-fact">
+              <span>判别路径</span>
+              <strong>{{ decisionPathLabel(detail.assessment) }}</strong>
+            </div>
+          </section>
+
+          <section class="detail-section similar-section" aria-labelledby="similar-account-title">
+            <div class="section-heading">
+              <div>
+                <h3 id="similar-account-title">相似账号</h3>
+                <p>按当前检测运行中的账号特征相近度排序。</p>
               </div>
-            </template>
-            <template v-else-if="column.key === 'support_count'">
-              {{ supportCount(record.assessment) }}
-            </template>
-            <template v-else-if="column.key === 'active_hours'">
-              {{ activeHoursLabel(record.active_hours) }}
-            </template>
-            <template v-else-if="column.key === 'operation'">
-              <a-button type="link" size="small" @click="openDetail(record)">查看</a-button>
-            </template>
-          </template>
-        </a-table>
+              <span class="section-count">{{ similarAccounts.length }} 个</span>
+            </div>
+            <p class="method-note">相近度用于账号研判辅助，不代表关注、好友或转发关系。</p>
 
-        <a-empty v-else-if="!loading" description="暂无账号画像数据" />
-      </a-spin>
-    </a-card>
-
-    <a-drawer
-      v-model:open="detailOpen"
-      width="860"
-      :destroyOnClose="true"
-      :title="detailTitle"
-    >
-      <a-spin :spinning="detailLoading">
-        <template v-if="detail">
-          <a-descriptions bordered size="small" :column="2" class="detail-section">
-            <a-descriptions-item label="昵称">{{ displayName(detail) }}</a-descriptions-item>
-            <a-descriptions-item label="平台">{{ platformLabel(detail.platform) }}</a-descriptions-item>
-            <a-descriptions-item label="账号 ID">{{ detail.account_id || '暂无' }}</a-descriptions-item>
-            <a-descriptions-item label="发言数">{{ detail.post_count ?? 0 }}</a-descriptions-item>
-            <a-descriptions-item label="活跃时段">{{ activeHoursLabel(detail.active_hours) }}</a-descriptions-item>
-            <a-descriptions-item label="最短间隔">{{ intervalLabel(detail.min_interval_seconds) }}</a-descriptions-item>
-            <a-descriptions-item label="BotRHG 判别">
-              <a-tag :color="assessmentColor(detail.assessment?.level)">
-                {{ assessmentLabel(detail.assessment?.level) }}
-              </a-tag>
-            </a-descriptions-item>
-            <a-descriptions-item label="模型判别">
-              {{ predictionLabel(detail.assessment?.prediction) }}
-            </a-descriptions-item>
-            <a-descriptions-item label="机器人概率（模型概率 / BotRHG 概率）">
-              {{ probabilityLabel(detail.assessment?.bot_probability) }}
-            </a-descriptions-item>
-            <a-descriptions-item label="模型版本">
-              {{ detail.assessment?.model_version || activeModel?.model_version || '暂无' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="判别路径">
-              {{ decisionPathLabel(detail.assessment) }}
-            </a-descriptions-item>
-          </a-descriptions>
-
-          <section class="detail-section">
-            <h3 class="section-title">超图相近账号</h3>
-            <a-table
-              v-if="detail.assessment?.similar_accounts?.length"
-              :columns="similarColumns"
-              :dataSource="detail.assessment.similar_accounts"
-              rowKey="account_id"
-              :pagination="false"
-              size="small"
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'similarity'">
-                  {{ similarityLabel(record.similarity) }}
-                </template>
-                <template v-else-if="column.key === 'bot_probability'">
-                  {{ probabilityLabel(record.bot_probability) }}
-                </template>
-                <template v-else-if="column.key === 'prediction'">
-                  {{ predictionLabel(record.final_prediction) }}
-                </template>
-                <template v-else-if="column.key === 'routed'">
-                  {{ record.routed ? '参与校正' : '未参与校正' }}
-                </template>
-              </template>
-            </a-table>
+            <ol v-if="similarAccounts.length" class="similar-account-list" aria-label="相似账号列表">
+              <li v-for="(neighbor, index) in similarAccounts" :key="`${neighbor.platform}-${neighbor.account_id}`">
+                <button
+                  type="button"
+                  class="similar-account-row"
+                  :aria-label="`查看相似账号 ${similarAccountName(neighbor)}`"
+                  @click="selectSimilarAccount(neighbor)"
+                >
+                  <span class="similar-rank" aria-hidden="true">{{ index + 1 }}</span>
+                  <span class="similar-account-main">
+                    <strong>{{ similarAccountName(neighbor) }}</strong>
+                    <span>{{ platformLabel(neighbor.platform) }} · {{ neighbor.account_id }}</span>
+                  </span>
+                  <span class="similarity-measure">
+                    <span class="similarity-track" aria-hidden="true">
+                      <span :style="{ width: similarityPercent(neighbor.similarity) }" />
+                    </span>
+                    <strong>{{ similarityLabel(neighbor.similarity) }}</strong>
+                  </span>
+                  <span class="similar-account-verdict">
+                    <span>{{ predictionLabel(neighbor.final_prediction) }}</span>
+                    <span>{{ probabilityLabel(neighbor.bot_probability) }}</span>
+                    <small>{{ neighbor.routed ? '参与本次校正' : '未参与本次校正' }}</small>
+                  </span>
+                </button>
+              </li>
+            </ol>
             <a-empty
               v-else
-              description="暂无相近账号"
+              description="当前检测未产出相似账号"
               :image-style="{ height: '42px' }"
             />
           </section>
 
-          <section class="detail-section">
-            <h3 class="section-title">近期发言</h3>
-            <a-list :dataSource="detail.recent_posts || []" size="small" class="post-list">
+          <section class="detail-section" aria-labelledby="recent-post-title">
+            <div class="section-heading">
+              <div>
+                <h3 id="recent-post-title">近期发言</h3>
+                <p>保留原帖文本与互动信息，支持人工核查。</p>
+              </div>
+            </div>
+            <a-list v-if="(detail.recent_posts || []).length" :data-source="detail.recent_posts || []" size="small" class="post-list">
               <template #renderItem="{ item }">
                 <a-list-item>
                   <a-list-item-meta>
@@ -234,34 +259,51 @@
               </template>
             </a-list>
             <a-empty
-              v-if="!(detail.recent_posts || []).length"
+              v-else
               description="暂无近期发言"
               :image-style="{ height: '42px' }"
             />
           </section>
         </template>
-      </a-spin>
-    </a-drawer>
+      </section>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, type ComponentPublicInstance } from 'vue'
 import { message } from 'ant-design-vue'
-import {
-  PlayCircleOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons-vue'
+import { PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/PageHeader.vue'
 import {
   getAccountDetail,
-  getAccountProfiles,
+  getAccountProfilePage,
   getActiveAccountModel,
   runSocialBotDetection,
   type AccountModelPointerStatus,
+  type AccountProfilePage,
   type AccountQueryParams,
   type BotDetectionResult,
 } from '@/api/accounts'
+import {
+  acceptAccountDetailResponse,
+  accountSelectionKey,
+  accountTargetFromProfile,
+  resolveAccountSelection,
+  sameAccountTarget,
+  type AccountTarget,
+} from './accountWorkbench'
+
+type SimilarAccount = {
+  account_id: string
+  platform: string
+  author_name?: string
+  similarity?: number | null
+  bot_probability?: number | null
+  final_prediction?: 'bot' | 'human' | ''
+  routed?: boolean
+}
 
 type AccountAssessment = {
   level?: 'attention' | 'normal' | 'pending'
@@ -274,13 +316,7 @@ type AccountAssessment = {
   model_version?: string
   pointer_revision?: number
   calibration_source?: string
-  similar_accounts?: Array<{
-    account_id: string
-    similarity?: number | null
-    bot_probability?: number | null
-    final_prediction?: 'bot' | 'human' | ''
-    routed?: boolean
-  }>
+  similar_accounts?: Array<Omit<SimilarAccount, 'platform' | 'author_name'>>
 }
 
 type AccountProfile = Record<string, any> & {
@@ -294,18 +330,31 @@ type AccountProfile = Record<string, any> & {
   assessment?: AccountAssessment
 }
 
+type RefreshProfilesOptions = {
+  keepSelection?: boolean
+  useRouteSelection?: boolean
+}
+
+const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const detecting = ref(false)
 const detailLoading = ref(false)
+const profileError = ref('')
+const detailError = ref('')
 const profiles = ref<AccountProfile[]>([])
+const profilePage = ref<AccountProfilePage | null>(null)
 const detail = ref<AccountProfile | null>(null)
-const detailOpen = ref(false)
-const pageSize = ref(10)
-const eventId = ref('')
-const platform = ref<string | undefined>()
+const selectedAccount = ref<AccountTarget | null>(null)
+const accountListRowElements = new Map<string, HTMLButtonElement>()
+const eventId = ref(queryValue(route.query.event_id))
+const platform = ref<string | undefined>(queryValue(route.query.platform) || undefined)
 const activeModel = ref<AccountModelPointerStatus | null>(null)
 const detectionResult = ref<BotDetectionResult | null>(null)
 const lastSyncedAt = ref('')
+let profilesRequestGeneration = 0
+let detailRequestGeneration = 0
+const PROFILE_PAGE_SIZE = 200
 
 const platformOptions = [
   { label: '微博', value: 'weibo' },
@@ -313,40 +362,18 @@ const platformOptions = [
   { label: '小红书', value: 'xhs' },
 ]
 
-const columns = [
-  { title: '账号', dataIndex: 'author_name', key: 'author_name', width: 220, ellipsis: true },
-  { title: '平台', dataIndex: 'platform', key: 'platform', width: 100 },
-  { title: '发言数', dataIndex: 'post_count', key: 'post_count', width: 90 },
-  { title: 'BotRHG 判别', dataIndex: 'assessment', key: 'assessment', width: 120 },
-  { title: '模型判别', dataIndex: ['assessment', 'prediction'], key: 'prediction', width: 150 },
-  { title: '机器人概率（模型概率 / BotRHG 概率）', dataIndex: ['assessment', 'bot_probability'], key: 'bot_probability', width: 150 },
-  { title: '相近账号', dataIndex: ['assessment', 'similar_accounts'], key: 'support_count', width: 90 },
-  { title: '活跃时段', dataIndex: 'active_hours', key: 'active_hours', width: 110 },
-  { title: '操作', dataIndex: 'operation', key: 'operation', width: 80 },
-]
-
-const similarColumns = [
-  { title: '账号 ID', dataIndex: 'account_id', key: 'account_id', ellipsis: true },
-  { title: '相似度', dataIndex: 'similarity', key: 'similarity', width: 110 },
-  { title: '模型判别', dataIndex: 'final_prediction', key: 'prediction', width: 110 },
-  { title: '机器人概率', dataIndex: 'bot_probability', key: 'bot_probability', width: 120 },
-  { title: '超图路径', dataIndex: 'routed', key: 'routed', width: 120 },
-]
-
-const detailTitle = computed(() => `账号画像 · ${detail.value ? displayName(detail.value) : '-'}`)
-
 const profileStats = computed(() => {
   const rows = profiles.value
   return {
-    total: rows.length,
-    attention: rows.filter((row) => row.assessment?.level === 'attention').length,
-    normal: rows.filter((row) => row.assessment?.level === 'normal').length,
-    pending: rows.filter((row) => !row.assessment || row.assessment.level === 'pending').length,
+    total: Number(profilePage.value?.total ?? rows.length),
+    attention: Number(profilePage.value?.attention ?? rows.filter((row) => row.assessment?.level === 'attention').length),
+    pending: Number(profilePage.value?.pending ?? rows.filter((row) => !row.assessment || row.assessment.level === 'pending').length),
   }
 })
 
 const platformCoverage = computed(() => {
-  const labels = Array.from(new Set(profiles.value.map((row) => platformLabel(row.platform))))
+  const source = profilePage.value?.platforms || profiles.value.map((row) => String(row.platform || ''))
+  const labels = Array.from(new Set(source.map((value) => platformLabel(value))))
   return labels.length ? labels.join('、') : '暂无'
 })
 
@@ -355,15 +382,13 @@ const detectionSummary = computed(() => {
   return {
     account_count: numberOrZero(summary.account_count ?? profileStats.value.total),
     bot_count: numberOrZero(summary.bot_count ?? profileStats.value.attention),
-    post_count: numberOrZero(summary.post_count),
+    activity_count: numberOrZero(summary.activity_count ?? summary.post_count),
   }
 })
 
 const detectionStatusText = computed(() => {
   if (!detectionResult.value) return '未运行'
-  const status = detectionResult.value.status || 'available'
-  if (status === 'unavailable') return '不可用'
-  return '已完成'
+  return detectionResult.value.status === 'unavailable' ? '不可用' : '已完成'
 })
 
 const detectionStatusColor = computed(() => {
@@ -378,8 +403,28 @@ const detectionNarrative = computed(() => {
     return `检测不可用：${reasonLabel(result.pointer_failure_reason || result.reason || result.audit_status)}`
   }
   const latency = result.prediction_latency_ms ? `，耗时 ${Math.round(result.prediction_latency_ms)}ms` : ''
-  return `已完成 BotRHG 账号检测${latency}。`
+  return `已完成账号检测${latency}。`
 })
+
+const similarAccounts = computed<SimilarAccount[]>(() => {
+  const anchor = detail.value
+  const anchorPlatform = String(anchor?.platform || '').trim().toLowerCase()
+  if (!anchorPlatform) return []
+  return (anchor?.assessment?.similar_accounts || []).map((neighbor) => {
+    const profile = profileForTarget({ platform: anchorPlatform, accountId: neighbor.account_id })
+    return {
+      ...neighbor,
+      platform: anchorPlatform,
+      author_name: profile?.author_name,
+      final_prediction: neighbor.final_prediction || profile?.assessment?.prediction,
+      bot_probability: neighbor.bot_probability ?? profile?.assessment?.bot_probability,
+    }
+  })
+})
+
+function queryValue(value: unknown): string {
+  return Array.isArray(value) ? String(value[0] || '').trim() : String(value || '').trim()
+}
 
 function queryParams(): AccountQueryParams {
   return {
@@ -388,24 +433,118 @@ function queryParams(): AccountQueryParams {
   }
 }
 
-async function loadProfiles() {
+function routeSelection(): AccountTarget | null {
+  const accountId = queryValue(route.query.account_id)
+  const accountPlatform = queryValue(route.query.account_platform) || queryValue(route.query.platform)
+  return accountId && accountPlatform ? { platform: accountPlatform, accountId } : null
+}
+
+function syncRoute() {
+  const query = { ...route.query }
+  const currentEventId = eventId.value.trim()
+  if (currentEventId) query.event_id = currentEventId
+  else delete query.event_id
+  if (platform.value) query.platform = platform.value
+  else delete query.platform
+  if (selectedAccount.value) {
+    query.account_id = selectedAccount.value.accountId
+    query.account_platform = selectedAccount.value.platform
+  } else {
+    delete query.account_id
+    delete query.account_platform
+  }
+  void router.replace({ query })
+}
+
+function profileRowKey(record: AccountProfile) {
+  const target = accountTargetFromProfile(record)
+  return target ? accountSelectionKey(target) : `unknown::${String(record.account_id || '')}`
+}
+
+function profileForTarget(target: AccountTarget | null): AccountProfile | undefined {
+  return profiles.value.find((profile) => sameAccountTarget(accountTargetFromProfile(profile), target))
+}
+
+function isSelectedAccount(record: AccountProfile): boolean {
+  return sameAccountTarget(accountTargetFromProfile(record), selectedAccount.value)
+}
+
+function captureAccountListRow(record: AccountProfile, element: Element | ComponentPublicInstance | null) {
+  const target = accountTargetFromProfile(record)
+  if (!target) return
+  const key = accountSelectionKey(target)
+  if (element instanceof HTMLButtonElement) accountListRowElements.set(key, element)
+  else accountListRowElements.delete(key)
+}
+
+function scrollSelectedAccountIntoView(target: AccountTarget) {
+  accountListRowElements
+    .get(accountSelectionKey(target))
+    ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+}
+
+async function loadProfiles(options: RefreshProfilesOptions = {}) {
+  const requestGeneration = ++profilesRequestGeneration
+  const requested = options.keepSelection
+    ? selectedAccount.value
+    : options.useRouteSelection
+      ? routeSelection()
+      : null
   loading.value = true
+  profileError.value = ''
   try {
-    const response = await getAccountProfiles(queryParams())
-    profiles.value = response?.data || []
+    const response = await getAccountProfilePage({
+      ...queryParams(),
+      page: 1,
+      page_size: PROFILE_PAGE_SIZE,
+    })
+    if (requestGeneration !== profilesRequestGeneration) return
+    profilePage.value = response?.data || null
+    profiles.value = Array.isArray(response?.data?.items) ? response.data.items : []
     lastSyncedAt.value = formatClock(new Date())
+    const nextSelection = resolveAccountSelection(profiles.value, requested)
+    if (!nextSelection) {
+      selectedAccount.value = null
+      detail.value = null
+      detailError.value = ''
+      syncRoute()
+      return
+    }
+    const nextProfile = profileForTarget(nextSelection)
+    if (nextProfile) void selectAccount(nextProfile)
+  } catch {
+    if (requestGeneration !== profilesRequestGeneration) return
+    profiles.value = []
+    profilePage.value = null
+    selectedAccount.value = null
+    detail.value = null
+    detailError.value = ''
+    profileError.value = '请检查当前事件范围与服务连接后重试。'
+    syncRoute()
   } finally {
-    loading.value = false
+    if (requestGeneration === profilesRequestGeneration) loading.value = false
   }
 }
 
 async function loadActiveModel() {
-  const response = await getActiveAccountModel()
-  activeModel.value = response?.data || null
+  try {
+    const response = await getActiveAccountModel()
+    activeModel.value = response?.data || null
+  } catch {
+    activeModel.value = null
+  }
 }
 
-async function refreshProfiles() {
-  await Promise.all([loadActiveModel(), loadProfiles()])
+async function refreshProfiles(options: RefreshProfilesOptions = {}) {
+  await Promise.all([loadActiveModel(), loadProfiles(options)])
+}
+
+function applyEventScope() {
+  void refreshProfiles({ keepSelection: false })
+}
+
+function handlePlatformChange() {
+  void refreshProfiles({ keepSelection: false })
 }
 
 async function handleRunDetection() {
@@ -413,72 +552,111 @@ async function handleRunDetection() {
   try {
     const response = await runSocialBotDetection(queryParams())
     detectionResult.value = response?.data || null
-    if (detectionResult.value?.accounts?.length) {
-      mergeDetectionResult(detectionResult.value)
-    }
-    if (detectionResult.value?.status === 'unavailable') {
-      message.warning(detectionNarrative.value)
-    } else {
-      message.success('账号检测已完成')
-    }
+    if (detectionResult.value?.accounts?.length) mergeDetectionResult(detectionResult.value)
+    if (detectionResult.value?.status === 'unavailable') message.warning(detectionNarrative.value)
+    else message.success('账号检测已完成')
     await loadActiveModel()
   } finally {
     detecting.value = false
   }
 }
 
-async function openDetail(record: AccountProfile) {
-  detailOpen.value = true
-  detailLoading.value = true
-  detail.value = record
-  try {
-    const response = await getAccountDetail(String(record.account_id), {
-      ...queryParams(),
-      platform: String(record.platform || platform.value || '') || undefined,
-    })
-    const nextDetail = response?.data || record
-    detail.value = mergeSingleAssessment(nextDetail)
-  } finally {
-    detailLoading.value = false
+async function selectAccount(record: AccountProfile, scrollListRow = false) {
+  const target = accountTargetFromProfile(record)
+  if (!target) return
+  selectedAccount.value = target
+  detail.value = mergeSingleAssessment(record)
+  detailError.value = ''
+  syncRoute()
+  if (scrollListRow) {
+    await nextTick()
+    scrollSelectedAccountIntoView(target)
   }
+  await loadAccountDetail(record, target)
+}
+
+async function loadAccountDetail(record: AccountProfile, target: AccountTarget) {
+  const requestGeneration = ++detailRequestGeneration
+  detailLoading.value = true
+  try {
+    const response = await getAccountDetail(target.accountId, {
+      ...queryParams(),
+      platform: target.platform,
+    })
+    if (!acceptAccountDetailResponse({
+      requestGeneration,
+      currentGeneration: detailRequestGeneration,
+      requested: target,
+      current: selectedAccount.value,
+    })) return
+    detail.value = mergeSingleAssessment(response?.data || record)
+  } catch {
+    if (!acceptAccountDetailResponse({
+      requestGeneration,
+      currentGeneration: detailRequestGeneration,
+      requested: target,
+      current: selectedAccount.value,
+    })) return
+    detailError.value = '详情请求未完成，当前画像显示的是列表中的已加载信息。'
+  } finally {
+    if (requestGeneration === detailRequestGeneration) detailLoading.value = false
+  }
+}
+
+function retryDetail() {
+  const current = selectedAccount.value
+  const profile = profileForTarget(current)
+  if (current && profile) void loadAccountDetail(profile, current)
+}
+
+function selectSimilarAccount(neighbor: SimilarAccount) {
+  const target = {
+    platform: String(detail.value?.platform || ''),
+    accountId: neighbor.account_id,
+  }
+  const profile = profileForTarget(target)
+  if (profile) {
+    void selectAccount(profile, true)
+    return
+  }
+  void selectAccount({
+    account_id: target.accountId,
+    author_name: neighbor.author_name || target.accountId,
+    platform: target.platform,
+  }, true)
 }
 
 function mergeDetectionResult(result: BotDetectionResult) {
   const byKey = new Map<string, AccountAssessment>()
   for (const row of result.accounts || []) {
-    byKey.set(scopedKey(row.platform, row.account_id), detectionAccountToAssessment(row))
+    const target = accountTargetFromProfile({ platform: row.platform, account_id: row.account_id })
+    if (target) byKey.set(accountSelectionKey(target), detectionAccountToAssessment(row))
   }
-  profiles.value = profiles.value.map((profile) => ({
-    ...profile,
-    assessment: byKey.get(scopedKey(profile.platform, profile.account_id)) || profile.assessment,
-  }))
-  if (detail.value) {
-    detail.value = mergeSingleAssessment(detail.value)
-  }
+  profiles.value = profiles.value.map((profile) => {
+    const target = accountTargetFromProfile(profile)
+    return { ...profile, assessment: target ? byKey.get(accountSelectionKey(target)) || profile.assessment : profile.assessment }
+  })
+  if (detail.value) detail.value = mergeSingleAssessment(detail.value)
 }
 
 function mergeSingleAssessment(record: AccountProfile): AccountProfile {
-  const row = (detectionResult.value?.accounts || []).find(
-    (item) => scopedKey(item.platform, item.account_id) === scopedKey(record.platform, record.account_id),
-  )
-  if (!row) return record
-  return { ...record, assessment: detectionAccountToAssessment(row) }
+  const target = accountTargetFromProfile(record)
+  const row = (detectionResult.value?.accounts || []).find((item) => {
+    const candidate = accountTargetFromProfile({ platform: item.platform, account_id: item.account_id })
+    return sameAccountTarget(candidate, target)
+  })
+  return row ? { ...record, assessment: detectionAccountToAssessment(row) } : record
 }
 
 function detectionAccountToAssessment(row: Record<string, any>): AccountAssessment {
   const prediction = normalizedPrediction(row.final_prediction || row.prediction)
-  const probability = probabilityValue(row.calibrated_bot_probability ?? row.final_bot_probability)
   return {
     level: prediction === 'bot' ? 'attention' : prediction === 'human' ? 'normal' : 'pending',
-    label: prediction === 'bot' ? 'BotRHG: bot' : prediction === 'human' ? 'BotRHG: human' : '暂无模型输出',
+    label: prediction === 'bot' ? '需关注' : prediction === 'human' ? '未见异常' : '暂无模型输出',
     prediction,
     final_prediction: prediction,
-    bot_probability: probability,
-    calibrated: Boolean(
-      row.calibrated
-        || row.calibration_passed
-        || (row.calibrated_bot_probability !== null && row.calibrated_bot_probability !== undefined),
-    ),
+    bot_probability: probabilityValue(row.calibrated_bot_probability ?? row.final_bot_probability),
+    calibrated: Boolean(row.calibrated || row.calibration_passed),
     routed: Boolean(row.routed),
     model_version: activeModel.value?.model_version || '',
     pointer_revision: activeModel.value?.pointer_revision || 0,
@@ -491,7 +669,6 @@ function similarAccountProjection(rows: unknown): AccountAssessment['similar_acc
   if (!Array.isArray(rows)) return []
   return rows
     .filter((row): row is Record<string, any> => Boolean(row && typeof row === 'object' && row.account_id))
-    .slice(0, 10)
     .map((row) => ({
       account_id: String(row.account_id),
       similarity: numberOrNull(row.similarity),
@@ -501,25 +678,21 @@ function similarAccountProjection(rows: unknown): AccountAssessment['similar_acc
     }))
 }
 
-function profileRowKey(record: AccountProfile) {
-  return scopedKey(record.platform, record.account_id)
+function displayName(record: AccountProfile) {
+  return String(record.author_name || record.account_id || '未命名账号')
 }
 
-function scopedKey(platformValue: unknown, accountId: unknown) {
-  return `${String(platformValue || 'unknown').toLowerCase()}::${String(accountId || '')}`
+function similarAccountName(neighbor: SimilarAccount) {
+  return String(neighbor.author_name || neighbor.account_id || '未命名账号')
 }
 
 function scopedAccountLabel(record: AccountProfile) {
   return `${platformLabel(record.platform)} · ${record.account_id || '暂无 ID'}`
 }
 
-function displayName(record: AccountProfile) {
-  return String(record.author_name || record.account_id || '未命名账号')
-}
-
 function assessmentLabel(level: AccountAssessment['level']) {
-  if (level === 'attention') return 'BotRHG: bot'
-  if (level === 'normal') return 'BotRHG: human'
+  if (level === 'attention') return '需关注'
+  if (level === 'normal') return '未见异常'
   return '暂无模型输出'
 }
 
@@ -531,9 +704,9 @@ function assessmentColor(level: AccountAssessment['level']) {
 
 function predictionLabel(value: unknown) {
   const prediction = normalizedPrediction(value)
-  if (prediction === 'bot') return 'Bot'
+  if (prediction === 'bot') return '疑似自动化账号'
   if (prediction === 'human') return '正常账号'
-  return '暂无'
+  return '暂无模型输出'
 }
 
 function normalizedPrediction(value: unknown): 'bot' | 'human' | '' {
@@ -551,17 +724,15 @@ function probabilityValue(value: unknown): number | null {
   return Number.isFinite(probability) && probability >= 0 && probability <= 1 ? probability : null
 }
 
-function probabilityNumber(value: unknown) {
-  return probabilityValue(value) ?? 0
-}
-
-function probabilityPercent(value: unknown) {
-  return `${Math.round(probabilityNumber(value) * 100)}%`
-}
-
 function similarityLabel(value: unknown) {
   const similarity = Number(value)
   return Number.isFinite(similarity) ? similarity.toFixed(3) : '暂无'
+}
+
+function similarityPercent(value: unknown) {
+  const similarity = Number(value)
+  const normalized = Number.isFinite(similarity) ? Math.min(1, Math.max(0, similarity)) : 0
+  return `${Math.round(normalized * 100)}%`
 }
 
 function platformLabel(value: unknown) {
@@ -575,35 +746,9 @@ function activeHoursLabel(value: unknown) {
   return Number.isFinite(count) && count > 0 ? `${count} 个时段` : '暂无'
 }
 
-function intervalLabel(value: unknown) {
-  const seconds = Number(value)
-  if (!Number.isFinite(seconds) || seconds <= 0) return '暂无'
-  if (seconds < 60) return `${Math.round(seconds)} 秒`
-  if (seconds < 3600) return `${Math.round(seconds / 60)} 分钟`
-  return `${Math.round(seconds / 3600)} 小时`
-}
-
-function supportCount(assessment?: AccountAssessment) {
-  return assessment?.similar_accounts?.length ?? 0
-}
-
-function reasonLabel(value: unknown) {
-  const reason = String(value || '').trim()
-  const labels: Record<string, string> = {
-    active_model_bundle_invalid: '模型制品校验失败',
-    account_model_pointer_invalid: '模型指针失效',
-    no_active_account_model_pointer: '尚未激活账号检测模型',
-    account_model_runtime_unavailable: '模型运行时不可用',
-    account_model_runtime_load_failure: '模型加载失败',
-    invalid_pointer_without_model_identity: '指针缺少可审计模型身份',
-    unavailable_without_active_pointer: '没有可用模型指针',
-  }
-  return labels[reason] || reason || '原因未返回'
-}
-
 function decisionPathLabel(assessment?: AccountAssessment) {
   if (!assessment?.prediction) return '暂无'
-  return assessment.routed ? 'BotRHG 超图校正' : 'BotRHG 模型输出'
+  return assessment.routed ? '模型校正' : '基础模型输出'
 }
 
 function postTitle(post: Record<string, any>) {
@@ -628,12 +773,30 @@ function numberOrNull(value: unknown) {
   return Number.isFinite(number) ? number : null
 }
 
+function reasonLabel(value: unknown) {
+  const reason = String(value || '').trim()
+  const labels: Record<string, string> = {
+    active_model_bundle_invalid: '模型制品校验失败',
+    account_model_pointer_invalid: '模型指针失效',
+    no_active_account_model_pointer: '尚未激活账号检测模型',
+    account_model_runtime_unavailable: '模型运行时不可用',
+    account_model_runtime_load_failure: '模型加载失败',
+    invalid_pointer_without_model_identity: '指针缺少可审计模型身份',
+    unavailable_without_active_pointer: '没有可用模型指针',
+  }
+  return labels[reason] || reason || '原因未返回'
+}
+
 function formatClock(value: Date) {
-  return value.toLocaleString('zh-CN', { hour12: false })
+  return new Intl.DateTimeFormat('zh-CN', {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+    hour12: false,
+  }).format(value)
 }
 
 onMounted(() => {
-  void refreshProfiles()
+  void refreshProfiles({ useRouteSelection: true })
 })
 </script>
 
@@ -643,15 +806,19 @@ onMounted(() => {
   gap: 16px;
 }
 
+.filter-bar,
+.account-master-detail {
+  border: 1px solid #e4eaf1;
+  border-radius: 6px;
+  background: #fff;
+}
+
 .filter-bar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  background: #f8fafc;
-  border: 1px solid #e6edf5;
-  border-radius: 6px;
 }
 
 .filter-input {
@@ -662,11 +829,30 @@ onMounted(() => {
   width: 140px;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .sync-hint,
 .card-note,
-.account-subtitle {
+.pane-header p,
+.detail-title-wrap p,
+.section-heading p,
+.method-note {
   color: #667085;
   font-size: 12px;
+}
+
+.sync-hint {
+  font-variant-numeric: tabular-nums;
 }
 
 .overview-grid {
@@ -679,7 +865,8 @@ onMounted(() => {
   min-height: 160px;
 }
 
-.metric-strip {
+.metric-strip,
+.profile-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
@@ -687,12 +874,13 @@ onMounted(() => {
 
 .metric-item {
   padding: 10px;
-  background: #f7f9fc;
   border: 1px solid #e8eef6;
   border-radius: 6px;
+  background: #f7f9fc;
 }
 
-.metric-item span {
+.metric-item span,
+.profile-fact span {
   display: block;
   color: #667085;
   font-size: 12px;
@@ -704,6 +892,7 @@ onMounted(() => {
   color: #101828;
   font-size: 22px;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .metric-item.attention strong {
@@ -715,77 +904,368 @@ onMounted(() => {
   line-height: 1.6;
 }
 
-.profile-table-card {
+.account-master-detail {
+  display: grid;
+  grid-template-columns: minmax(290px, 0.85fr) minmax(0, 1.65fr);
+  height: clamp(620px, calc(100dvh - 250px), 780px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.account-list-pane,
+.account-detail-pane {
   min-width: 0;
+  min-height: 0;
+  padding: 18px;
 }
 
-.link-button {
-  display: inline;
-  padding: 0;
-  color: #0958d9;
-  font: inherit;
-  font-weight: 600;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
+.account-list-pane {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e4eaf1;
+  background: #fbfcfe;
 }
 
-.link-button:focus-visible {
+.pane-header,
+.detail-header,
+.section-heading,
+.account-list-heading,
+.account-list-meta,
+.account-list-probability,
+.similar-account-main,
+.similarity-measure,
+.similar-account-verdict {
+  display: flex;
+}
+
+.pane-header,
+.detail-header,
+.section-heading {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pane-header {
+  margin-bottom: 12px;
+}
+
+.pane-header h2,
+.detail-header h2,
+.section-heading h3 {
+  margin: 0;
+  color: #101828;
+  letter-spacing: 0;
+}
+
+.pane-header h2,
+.detail-header h2 {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.pane-header p,
+.detail-title-wrap p,
+.section-heading p {
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+.pane-meta,
+.section-count {
+  flex: 0 0 auto;
+  color: #667085;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pane-alert,
+.detail-alert {
+  margin-bottom: 12px;
+}
+
+.account-list {
+  display: grid;
+  gap: 6px;
+  min-height: 0;
+}
+
+.account-list-scroll {
+  flex: 1;
+  min-height: 0;
+  padding-right: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #aebdca transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.account-list-scroll:focus-visible {
   outline: 3px solid #91caff;
   outline-offset: 2px;
 }
 
-.probability-cell {
-  display: grid;
-  gap: 6px;
+.account-list-scroll::-webkit-scrollbar {
+  width: 8px;
 }
 
-.probability-track {
-  width: 100%;
-  height: 6px;
-  overflow: hidden;
-  background: #edf2f7;
+.account-list-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid #fbfcfe;
   border-radius: 999px;
+  background: #aebdca;
 }
 
-.probability-fill {
-  height: 100%;
-  background: #52c41a;
-  border-radius: inherit;
+.account-list-scroll::-webkit-scrollbar-thumb:hover {
+  background: #7f94a8;
 }
 
-.probability-fill.high {
-  background: #faad14;
-}
-
-.detail-section {
-  margin-bottom: 16px;
-}
-
-.section-title {
-  margin: 0 0 10px;
-  color: #101828;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.post-list {
-  border: 1px solid #edf2f7;
-  border-radius: 6px;
-}
-
-.post-content {
+.account-list-loading {
   display: block;
-  max-width: 720px;
+  min-height: 100%;
+}
+
+.account-list-loading :deep(.ant-spin-nested-loading),
+.account-list-loading :deep(.ant-spin-container) {
+  min-height: 100%;
+}
+
+.account-list-row,
+.similar-account-row {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.account-list-row {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.account-list-row:hover {
+  border-color: #cbd9e6;
+  background: #f1f6fb;
+}
+
+.account-list-row.is-selected {
+  border-color: #63809e;
+  background: #eaf1f8;
+  box-shadow: inset 3px 0 0 #315d7e;
+}
+
+.account-list-row:focus-visible,
+.similar-account-row:focus-visible {
+  outline: 3px solid #91caff;
+  outline-offset: 2px;
+}
+
+.account-list-heading {
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.account-list-heading strong,
+.similar-account-main strong,
+.post-content {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.account-list-heading strong {
+  font-size: 14px;
+}
+
+.account-list-meta,
+.account-list-probability {
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.account-list-probability strong {
+  color: #344054;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-detail-pane {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  background: #fff;
+}
+
+.detail-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e4eaf1;
+}
+
+.detail-eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: #5d7185;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.profile-facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 16px 0;
+  border-bottom: 1px solid #e4eaf1;
+}
+
+.profile-fact {
+  min-width: 0;
+}
+
+.profile-fact strong {
+  display: block;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  color: #1d2939;
+  font-size: 14px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-section {
+  padding-top: 18px;
+}
+
+.section-heading h3 {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.method-note {
+  margin: 10px 0 8px;
+  line-height: 1.5;
+}
+
+.similar-account-list {
+  display: grid;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.similar-account-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) minmax(120px, 0.7fr) minmax(132px, 0.75fr);
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: #fff;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.similar-account-row:hover {
+  border-color: #d7e1eb;
+  background: #f8fafc;
+}
+
+.similar-rank {
+  color: #667085;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.similar-account-main,
+.similar-account-verdict {
+  flex-direction: column;
+  min-width: 0;
+}
+
+.similar-account-main strong {
+  color: #1d2939;
+  font-size: 13px;
+}
+
+.similar-account-main span,
+.similar-account-verdict span,
+.similar-account-verdict small {
+  overflow-wrap: anywhere;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.similarity-measure {
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.similarity-track {
+  display: block;
+  flex: 1;
+  min-width: 32px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #e7edf3;
+}
+
+.similarity-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #63809e;
+}
+
+.similarity-measure strong {
+  color: #344054;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.similar-account-verdict small {
+  color: #5d7185;
+}
+
+.post-list {
+  border: 1px solid #edf2f7;
+  border-radius: 5px;
+}
+
+.post-content {
+  display: block;
+  max-width: 100%;
+}
+
 @media (max-width: 1100px) {
   .overview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .account-master-detail {
+    grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  }
+
+  .similar-account-row {
+    grid-template-columns: 22px minmax(0, 1fr) minmax(110px, 0.6fr);
+  }
+
+  .similar-account-verdict {
+    grid-column: 2 / -1;
+    flex-direction: row;
+    gap: 8px;
   }
 }
 
@@ -798,6 +1278,48 @@ onMounted(() => {
   .filter-input,
   .platform-select {
     width: 100%;
+  }
+
+  .account-master-detail {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+
+  .account-list-pane {
+    height: min(460px, 60dvh);
+    border-right: 0;
+    border-bottom: 1px solid #e4eaf1;
+  }
+
+  .account-detail-pane {
+    overflow-y: visible;
+  }
+
+  .profile-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 16px;
+  }
+
+  .similar-account-row {
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .similarity-measure,
+  .similar-account-verdict {
+    grid-column: 2;
+  }
+
+  .similar-account-verdict {
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-list-row,
+  .similar-account-row {
+    transition: none;
   }
 }
 </style>

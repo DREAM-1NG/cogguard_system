@@ -38,13 +38,14 @@ execution stages, traceable source excerpts, retrieval queries, and short
 rationale capsules when available; it is not a decision or a confidence view.
 _Avoid_: model trace, final verdict, chain-of-thought dump
 
-Current implementation status: the case service, snapshot revisions, evidence annotations, decision drafts, confirmed decisions, and activity stream are implemented in the current branch. Automatic routing after successful collection creates or revises a case and can request an internal review advisory when evidence sufficiency or urgency warrants it. This workspace is prototype code in the branch; it is not a claim of production rollout.
+Current implementation status: the case service, snapshot revisions, evidence annotations, decision drafts, confirmed decisions, and activity stream are implemented in the current branch. Automatic routing after successful collection creates or revises a case and persists the Student Bundle only; it cannot request a Teacher audit. This workspace is prototype code in the branch; it is not a claim of production rollout.
 
-The `/risk` workbench reads `Review Audit` from the `teacher-audit` endpoint
-after loading a case. The page never invokes a review run while merely viewing
-an audit; the existing analyst action remains the explicit trigger. Unavailable,
-queued, completed, and failed states are rendered separately, and the final
-case decision remains an analyst-confirmed `Confirmed Decision`.
+The `/risk` workbench reads the snapshot-bound Student Bundle, Review Audit,
+persisted governance references, and Countermeasure Report only when their
+respective panels are opened or an activity event completes. It does not load
+semantic evidence data as part of the case-detail request. The analyst action
+remains the explicit Teacher trigger, and the final case decision remains an
+analyst-confirmed `Confirmed Decision`.
 
 ---
 
@@ -117,6 +118,22 @@ Bridge requires observable upstream and downstream evidence plus nonzero
 intermediary contribution; amplifier requires direct observable activation and
 downstream coverage. Account position, popularity, or in-degree alone cannot
 create a role.
+
+**Key Propagation Path** is the first-screen reading projection for a
+Propagation Analysis. It contains the Current Primary Source, no more than 24
+evidence-backed bridge or amplifier accounts, and only the observed directed
+ancestor chains needed to connect them. Ordinary accounts are intentionally
+absent until an analyst expands a selected account; display omission is never
+evidence of no propagation.
+
+**Branch Expansion** reads one selected account's complete observable directed
+descendant branch from the same event/platform scope. It uses only observed
+edges and records a deterministic display parent solely to arrange those edges
+outward; it never creates a causal edge from screen position or popularity.
+
+**Independent Observation Island** is the separate outside rendering of one
+Independent Observation Branch. Its internal observed edges remain
+inspectable, but it has no visual or data edge to the Current Primary Source.
 
 **Claim Response Path Semantic Overlay**:
 A read-only semantic evidence summary for one observed authority-claim response
@@ -198,11 +215,23 @@ and claim deception. Rationale projections are auxiliary targets only; Teacher
 confidence, Teacher probabilities, full Agent traces, and raw RAG documents are
 audit data, not Student loss targets.
 
+**Student Bundle** is the persisted, snapshot-bound output of Student Review.
+It contains independent task axes. The approved HateCoT harm axis may return a
+calibrated score, threshold, conclusion, and short rationale. The
+claim-deception axis returns `unconfigured` until an approved Weibo21 artifact
+exists; it never falls back to keywords or a shadow classifier.
+
 **Teacher Review** is the analyst-triggered asynchronous MARO-compatible chain:
 necessary experts -> QuestionReflection -> at most two targeted responses ->
 task-specific Judge. Simple cases skip QuestionReflection and targeted
 responses. The chain returns an advisory report and typed sidecars; it does
 not replace the Canonical Verdict.
+
+**Countermeasure Report** is a bounded internal draft created only after a
+completed Teacher Judge, traceable input spans, and persisted applicable
+governance references pass the quality gate. It binds one Event Snapshot and
+Teacher Audit, remains downloadable as Markdown for analyst review, and cannot
+publish, delete content, or affect accounts automatically.
 
 **EvidenceRAG** retrieves traceable external evidence only for an eligible
 claim. **PolicyRAG** retrieves current governance clauses only. **ReasonBank**
@@ -219,6 +248,33 @@ must remain non-relational states, never `insufficient`.
 policy references and a quality gate. A capsule can enter auxiliary Student
 supervision only after the relevant schema, provenance, citation, relation,
 and policy checks pass.
+
+The product homepage may show a **Persisted Governance Reference** only when
+it was written into the completed Teacher audit sidecar for the selected case.
+The UI must not supplement a historical audit from the current governance
+catalog. The **Semantic Evidence Workspace** is the one analyst page at
+`/risk/semantic-evidence`; it links keywords, sentiment, stance, topics,
+named entities, temporal/platform slices, community summaries, and traceable
+content through one shared event scope and filter state. The four historical
+semantic URLs redirect here while preserving `event_id` and `case_id`; the
+`/risk` overview still does not request a semantic artifact. Traceable content
+means a stable local evidence reference and optional source URL, not an
+automated truth verdict.
+
+The workspace receives a bounded **Semantic Workspace Projection**, never the
+complete artifact. An unfiltered first load comes from a hash-pinned
+**Semantic Page Read Model** that contains aggregate views, a bounded
+cross-facet relationship index, and at most 40 traceable rows, but no raw
+`layers`. Selecting a facet causes the backend to recompute the linked,
+filtered projection from the verified immutable source artifact; only the
+resulting aggregates and page are returned. The read model must match the
+recorded source artifact SHA-256 and the same snapshot-freshness checks. A
+successful source check is reused for at most 15 seconds, then the next request
+rebuilds the current snapshot and fails closed on a mismatch. Candidate runs
+are resolved through the indexed `analysis_runs.event_id` lookup before their
+exact artifact roots are read. Older runs use a verified compatibility read and
+may materialize the current read model afterward. The complete artifact remains
+an internal payload for consumers that require its full shape.
 
 **Hard-case mining** is an offline candidate-manifest generator based on
 uncertainty, evidence conflict, OOD signals, and error coverage. It is not a
@@ -320,3 +376,15 @@ fold protocol hash. `--resume` reuses only reports and analysis caches whose
 hashes match the current protocol; a stale fold fails closed. A Judge format or
 provider failure after retries fails the run rather than removing a target row
 from the metric denominator.
+
+## Event Review Deployment Check (2026-08-18)
+
+`/risk` now reads snapshot-bound Student, Teacher Audit, governance reference,
+and Countermeasure Report projections independently. For the local
+`trump_visit_2026_05_21` case, a human-triggered content-harm audit selected
+six posts only by repost, like, and comment counts, completed through the
+DeepSeek-backed MARO-compatible chain, and persisted its bounded audit output.
+The latest audit exposes only its actual four Judge-used governance references
+and a quality-gated Countermeasure draft; it does not backfill the current
+static policy library. The claim-deception Student axis remains explicitly
+`unconfigured`.

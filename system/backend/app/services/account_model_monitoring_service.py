@@ -26,14 +26,17 @@ from app.models.account_labeling import (
 from app.utils.exceptions import AppException
 
 __all__ = [
+    "ACCOUNT_PREDICTION_OUTPUT_SCHEMA",
     "account_prediction_input_fingerprint",
     "create_account_monitor_snapshot",
+    "has_current_similarity_evidence_contract",
     "list_account_monitor_snapshots",
     "record_account_prediction_audits",
     "record_account_runtime_error",
 ]
 
 _MODEL_FAMILY = "chinese_account_detection"
+ACCOUNT_PREDICTION_OUTPUT_SCHEMA = "account_prediction.v2"
 
 
 async def record_account_prediction_audits(
@@ -65,7 +68,14 @@ async def record_account_prediction_audits(
         scoped_posts = grouped.get(account_scope_key(row_platform, account_id), [])
         input_fingerprint = account_prediction_input_fingerprint(scoped_posts)
         audit_id = "account-prediction-" + _canonical_digest(
-            (row_platform, account_id, input_fingerprint, model.model_version, model.pointer_revision)
+            (
+                row_platform,
+                account_id,
+                input_fingerprint,
+                model.model_version,
+                model.pointer_revision,
+                ACCOUNT_PREDICTION_OUTPUT_SCHEMA,
+            )
         )[:32]
         exists_row = (
             await session.execute(
@@ -75,6 +85,7 @@ async def record_account_prediction_audits(
         if exists_row is not None:
             continue
         payload = {
+            "output_schema": ACCOUNT_PREDICTION_OUTPUT_SCHEMA,
             "event_id": event_id,
             "platform": row_platform or _first_platform(scoped_posts),
             "artifact_hash": str(model.artifact_hash),
@@ -374,7 +385,7 @@ def account_prediction_input_fingerprint(posts: Iterable[dict[str, Any]]) -> str
 
     rows = sorted(
         (
-            str(post.get("post_id") or post.get("id") or ""),
+            str(post.get("account_activity_id") or post.get("post_id") or post.get("comment_id") or post.get("id") or ""),
             str(post.get("timestamp") or ""),
             str(post.get("content") or post.get("text") or ""),
         )
@@ -405,6 +416,15 @@ def _support_evidence_projection(value: Any) -> list[dict[str, Any]]:
             }
         )
     return projected
+
+
+def has_current_similarity_evidence_contract(payload: dict[str, Any]) -> bool:
+    """Return whether an audit can supply the account workbench evidence."""
+
+    return (
+        payload.get("output_schema") == ACCOUNT_PREDICTION_OUTPUT_SCHEMA
+        and isinstance(payload.get("support_evidence"), list)
+    )
 
 
 def _canonical_digest(value: Any) -> str:

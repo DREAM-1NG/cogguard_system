@@ -8,6 +8,8 @@ from types import SimpleNamespace
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+from app.config import settings
+from app.core.analysis.query_result_cache import clear_local_query_result_cache
 from app.db.mysql import Base
 from app.models.case_workbench import (
     AuthoritySource,
@@ -16,6 +18,7 @@ from app.models.case_workbench import (
     CaseRecord,
 )
 from app.services import claim_response_landscape_service
+from app.services.event_data import load_event_posts as load_raw_event_posts
 
 
 class AsyncSessionAdapter:
@@ -239,6 +242,113 @@ def _observed_result() -> dict:
             ]
         },
     }
+
+
+def test_platform_engagement_percentiles_preserve_ties_without_per_row_resorting():
+    rows = [
+        _post("weibo", "post-zero", "account-0", likes=0),
+        _post("weibo", "post-two-a", "account-1", likes=2),
+        _post("weibo", "post-two-b", "account-2", likes=2),
+        _post("weibo", "post-five", "account-3", likes=5),
+    ]
+
+    percentiles = claim_response_landscape_service._platform_engagement_percentiles(rows, [])
+
+    assert percentiles == {
+        "weibo:post:post-zero": 0.25,
+        "weibo:post:post-two-a": 0.75,
+        "weibo:post:post-two-b": 0.75,
+        "weibo:post:post-five": 1.0,
+    }
+
+
+def test_landscape_reuses_only_current_source_and_semantic_identity(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        source_version = {"value": "ingestion-v1"}
+        semantic_version = {"value": "semantic-run-v1"}
+        post_loads = 0
+        semantic_loads = 0
+        try:
+            monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_ENABLED", True)
+            monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_REDIS_ENABLED", False)
+            clear_local_query_result_cache()
+
+            async def fake_source_fingerprint(*_args, **_kwargs):
+                return source_version["value"]
+
+            async def fake_semantic_identity(*_args, **_kwargs):
+                return semantic_version["value"]
+
+            async def counted_posts(mongo_db, **kwargs):
+                nonlocal post_loads
+                post_loads += 1
+                return await load_raw_event_posts(mongo_db, **kwargs)
+
+            async def fake_semantic_projection(*_args, **_kwargs):
+                nonlocal semantic_loads
+                semantic_loads += 1
+                return {
+                    "status": "ready",
+                    "artifact": {
+                        "technology": "semantic_enrichment",
+                        "status": "ok",
+                        "runtime_status": "ready",
+                        "fallback": False,
+                        "layers": {"posts": [], "comments": []},
+                    },
+                }
+
+            async def fake_observed(**_kwargs):
+                return _observed_result()
+
+            monkeypatch.setattr(claim_response_landscape_service, "event_data_fingerprint", fake_source_fingerprint)
+            monkeypatch.setattr(
+                claim_response_landscape_service,
+                "_semantic_projection_cache_identity",
+                fake_semantic_identity,
+            )
+            monkeypatch.setattr(claim_response_landscape_service, "load_event_posts", counted_posts)
+            monkeypatch.setattr(
+                claim_response_landscape_service,
+                "_load_latest_semantic_projection",
+                fake_semantic_projection,
+            )
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            mongo = _mongo()
+            first = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1", db=db, mongo_db=mongo
+            )
+            second = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1", db=db, mongo_db=mongo
+            )
+            assert first == second
+            assert post_loads == 1
+            assert semantic_loads == 1
+
+            semantic_version["value"] = "semantic-run-v2"
+            await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1", db=db, mongo_db=mongo
+            )
+            assert post_loads == 2
+            assert semantic_loads == 2
+
+            source_version["value"] = "ingestion-v2"
+            await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1", db=db, mongo_db=mongo
+            )
+            assert post_loads == 3
+            assert semantic_loads == 3
+        finally:
+            clear_local_query_result_cache()
+            session.close()
+
+    asyncio.run(scenario())
 
 
 def test_landscape_uses_exact_bound_authority_accounts_and_excludes_verified_same_name(monkeypatch):

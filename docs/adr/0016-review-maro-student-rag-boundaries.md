@@ -64,3 +64,17 @@ traces are also not stable Student supervision contracts.
   Countermeasure, and the two-response cap.
 - Static checks must pass without dataset training, external LLM calls, or
   DeepSeek/API credentials.
+
+## Implementation Note (2026-08-17)
+
+The product boundary now persists a snapshot-bound Student Bundle, exposes its
+two axes via a dedicated API, and makes reassessment explicit. The harm axis is
+artifact-backed; claim-deception is an explicit `unconfigured` state until its
+separate artifact is approved. No shadow or keyword fallback is permitted.
+
+Teacher completion and failure are both durable activities. Completed audits
+can project only their persisted governance references and bounded rationale
+capsules. A Countermeasure Report is emitted only after its Judge, input-span,
+and governance-reference gates pass. The report remains an internal analyst
+draft with Markdown export and has no enforcement capability. This note records
+implemented contracts, not live-provider or model-performance validation.

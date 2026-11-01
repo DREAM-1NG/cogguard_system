@@ -21,6 +21,11 @@ export type CaseActivityType =
   | 'decision_confirmed'
   | 'correction_recorded'
   | 'reconfirmation_required'
+  | 'student_assessed'
+  | 'teacher_review_failed'
+  | 'countermeasure_report_available'
+
+export type ReviewTask = 'interpersonal_harm' | 'claim_deception'
 
 export interface PreliminaryFinding {
   conclusion: ReviewConclusion
@@ -118,6 +123,40 @@ export interface ReviewAuditRationale {
   citation_coverage: number | null
 }
 
+export interface ReviewAuditGovernanceReference {
+  reference_id: string
+  platform: string
+  title: string
+  url: string | null
+  reference_type: string
+  governance_use: string
+}
+
+export interface ReviewAuditGovernance {
+  available: boolean
+  category_id: string
+  category: string
+  recommended_actions: string[]
+  human_confirmation_items: string[]
+  references: ReviewAuditGovernanceReference[]
+}
+
+export interface ReviewAuditSelectionItem {
+  post_id: string
+  platform: string
+  author_name: string
+  excerpt: string
+  reposts: number
+  likes: number
+  comments: number
+}
+
+export interface ReviewAuditSelection {
+  source: string
+  criteria: string[]
+  items: ReviewAuditSelectionItem[]
+}
+
 export interface ReviewAudit {
   case_id: string
   status: ReviewAuditStatus
@@ -135,7 +174,47 @@ export interface ReviewAudit {
   sources: ReviewAuditSource[]
   queries: string[]
   rationale: ReviewAuditRationale
+  governance: ReviewAuditGovernance
+  selection: ReviewAuditSelection
   quality: Record<string, string | number | boolean | null>
+}
+
+export interface StudentAxisAssessment {
+  task: ReviewTask
+  status: 'completed' | 'unconfigured' | 'failed' | 'unavailable'
+  conclusion: ReviewConclusion | null
+  risk_score: number | null
+  threshold: number | null
+  rationale: string
+}
+
+export interface StudentAssessment {
+  case_id: string
+  snapshot_id: string | null
+  status: string
+  assessed_at: string | null
+  axes: StudentAxisAssessment[]
+}
+
+export interface StudentReassessmentReceipt {
+  case_id: string
+  status: string
+  message: string
+}
+
+export interface CountermeasureReport {
+  case_id: string
+  snapshot_id: string | null
+  teacher_audit_id: string | null
+  status: 'available' | 'not_generated' | 'failed' | 'unavailable'
+  reason: string
+  risk_summary: string
+  evidence_refs: string[]
+  policy_refs: string[]
+  recommended_actions: string[]
+  response_draft: string
+  limitations: string[]
+  quality_gate: boolean
 }
 
 export interface ReviewCaseList {
@@ -193,6 +272,7 @@ export interface ReviewCaseEvidence {
 export interface ReviewRequestCreate {
   reason: string
   evidence_refs: string[]
+  review_tasks: ReviewTask[]
 }
 
 export interface ReviewRequestReceipt {

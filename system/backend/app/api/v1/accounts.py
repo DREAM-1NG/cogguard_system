@@ -52,6 +52,25 @@ async def list_profiles(
     return success(data=profiles)
 
 
+@router.get("/profiles/page")
+async def list_profile_page(
+    platform: str | None = Query(None, description="Optional platform filter"),
+    event_id: str | None = Query(None, description="Optional event filter"),
+    page: int = Query(1, ge=1, description="One-based page number"),
+    page_size: int = Query(200, ge=1, le=500, description="Bounded account rows per page"),
+    _current_user: User = Depends(get_current_user),
+):
+    """Return a recording-friendly page from the complete account detection projection."""
+
+    profile_page = await account_service.get_account_profile_page(
+        platform=platform,
+        event_id=event_id,
+        page=page,
+        page_size=page_size,
+    )
+    return success(data=profile_page)
+
+
 @router.post("/bot-detection")
 async def detect_bots(
     platform: str | None = Query(None, description="Optional platform filter"),

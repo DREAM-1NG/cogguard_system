@@ -23,7 +23,7 @@ const router = createRouter({
           path: 'dashboard',
           name: 'Dashboard',
           component: () => import('@/views/dashboard/index.vue'),
-          meta: { title: '数据大屏' },
+          meta: { title: '数据看板' },
         },
         {
           path: 'crawl',
@@ -59,6 +59,32 @@ const router = createRouter({
           path: 'risk',
           name: 'Risk',
           component: () => import('@/views/risk/index.vue'),
+          meta: { title: '事件研判' },
+        },
+        {
+          path: 'risk/semantic-evidence',
+          name: 'RiskSemanticEvidence',
+          component: () => import('@/views/semantic-analysis/index.vue'),
+          meta: { title: '事件研判' },
+        },
+        {
+          path: 'risk/semantic-clusters',
+          redirect: (to) => ({ path: '/risk/semantic-evidence', query: to.query }),
+          meta: { title: '事件研判' },
+        },
+        {
+          path: 'risk/named-entities',
+          redirect: (to) => ({ path: '/risk/semantic-evidence', query: to.query }),
+          meta: { title: '事件研判' },
+        },
+        {
+          path: 'risk/temporal-change',
+          redirect: (to) => ({ path: '/risk/semantic-evidence', query: to.query }),
+          meta: { title: '事件研判' },
+        },
+        {
+          path: 'risk/verifiable-content',
+          redirect: (to) => ({ path: '/risk/semantic-evidence', query: to.query }),
           meta: { title: '事件研判' },
         },
       ],

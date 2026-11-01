@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from app.services.event_data import load_event_account_names
+from app.services.event_data import load_event_account_activities, load_event_account_names
 
 
 class _Cursor:
@@ -66,3 +66,53 @@ def test_account_name_projection_has_a_managed_event_account_index():
 
     assert "ix_raw_posts_event_author_id" in index_script
     assert "key: { event_id: 1, author_id: 1 }" in index_script
+
+
+def test_account_activities_combine_posts_and_comments_with_stable_source_ids():
+    class Collections(dict):
+        pass
+
+    async def scenario() -> None:
+        posts = _Collection(
+            [
+                {
+                    "post_id": "post-1",
+                    "event_id": "event-1",
+                    "platform": "weibo",
+                    "author_id": "publisher",
+                    "timestamp": "2026-05-21T00:00:00+00:00",
+                    "content": "发布内容",
+                }
+            ]
+        )
+        comments = _Collection(
+            [
+                {
+                    "comment_id": "comment-1",
+                    "post_id": "post-1",
+                    "event_id": "event-1",
+                    "platform": "weibo",
+                    "author_id": "participant",
+                    "timestamp": "2026-05-21T00:01:00+00:00",
+                    "content": "评论内容",
+                }
+            ]
+        )
+
+        activities = await load_event_account_activities(
+            Collections(raw_posts=posts, raw_comments=comments),
+            event_id="event-1",
+            platform="weibo",
+        )
+
+        assert [(row["account_activity_type"], row["account_activity_id"]) for row in activities] == [
+            ("post", "post:post-1"),
+            ("comment", "comment:comment-1"),
+        ]
+        comment = activities[1]
+        assert comment["post_id"] == "post-1"
+        assert comment["parent_post_id"] == "post-1"
+        assert posts.query == {"event_id": "event-1", "platform": "weibo"}
+        assert comments.query == {"event_id": "event-1", "platform": "weibo"}
+
+    asyncio.run(scenario())

@@ -28,6 +28,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Preliminary Finding** | The first structured case finding produced before analyst confirmation. | First guess, preliminary score |
 | **Review Advisory** | An internal or manually requested advisory verdict that can differ from the preliminary finding. | Final verdict, automatic decision |
 | **Review Audit** | A bounded read-only projection of a persisted review advisory run, including stages, source excerpts, queries, and available short rationale capsules. | Model trace, final verdict, chain-of-thought dump |
+| **Student Bundle** | A snapshot-bound, persisted two-axis Student output. An unapproved task artifact remains `unconfigured`; it does not invoke a keyword or shadow fallback. | Unified risk score, automatic escalation |
+| **Countermeasure Report** | A quality-gated, snapshot- and Teacher Audit-bound internal draft containing cited basis, governance references, human actions, a response draft, and limitations. | Automatic enforcement, final disposition |
 | **Confirmed Decision** | The immutable analyst-confirmed case decision. | Mutable decision, draft approval |
 | **Evidence Sufficiency** | The assessment of whether the current evidence set is enough to support a case action. | Completeness score, confidence score |
 | **Evidence Annotation** | A note attached to a specific evidence item, including its assessment and supporting context. | Comment, tag, annotation blob |
@@ -40,6 +42,9 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Independent Observation Branch** | An observed directed component that is not reachable from the Current Primary Source. Its internal observed edges remain inspectable, but it is not connected to the primary source by a synthetic edge and does not enter primary-source layer proportions. | Parallel root, secondary spread from the primary source |
 | **Primary-Source Layer** | The directed shortest-path distance from the Current Primary Source over the complete observable reachable set. Its coverage denominator is the complete reachable set, not the visible-node limit used for the page. | Visual ring, approximate layer |
 | **Role Contribution** | An evidence-bounded account contribution within the observed propagation graph. Source, bridge, and amplifier roles retain their observed edge and path evidence; bridge requires nonzero intermediary contribution with upstream and downstream evidence, and amplifier requires direct observable activation plus downstream coverage. | Influencer score, high in-degree role |
+| **Key Propagation Path** | The compact default propagation reading projection: the Current Primary Source, at most 24 evidence-backed bridge/amplifier accounts, and the observed directed ancestor closure that connects them. Ordinary accounts are omitted until explicitly expanded. | Truncated full graph, popularity ranking |
+| **Branch Expansion** | The complete observable directed descendant branch for one selected key account in the same event/platform scope. Its visual display parent is deterministic layout metadata only; every shown causal edge remains observed. | Generated branch, inferred parent relation |
+| **Independent Observation Island** | The outside visual grouping for an Independent Observation Branch. It retains internal observed edges without a primary-source connecting edge. | Parallel source, secondary branch from the primary source |
 
 ## Internal Analysis Lifecycle
 
@@ -126,6 +131,13 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **PolicyRAG** | Retrieval of currently effective governance clauses and allowed/prohibited action references. | Fact evidence, legal authority |
 | **ReasonBank** | Offline retrieval of rationale examples for analysis or auxiliary supervision; it cannot establish factual support. | Evidence store, truth database |
 | **Rationale Capsule** | A short rationale linked to input spans and, when applicable, evidence or policy references, subject to a quality gate. | Full chain of thought, confidence explanation |
+| **Semantic Analysis Artifact** | A persisted, snapshot-bound semantic record used to derive analyst views for keywords, clusters, entities, temporal slices, and traceable source content. | Live semantic verdict, evidence of truth |
+| **Semantic Page Read Model** | A compact artifact compiled in the same Analysis Run as a Semantic Analysis Artifact. It excludes raw `layers`, pins the source SHA-256 and snapshot fingerprint, and stores only aggregate views, bounded cross-facet relations, and the first 40 traceable rows for the Semantic Evidence Workspace. | Cached full artifact, new semantic analysis, source of truth |
+| **Semantic Workspace Projection** | The bounded, read-only payload for the **Semantic Evidence Workspace**. It combines linked semantic aggregates, bounded relationship summaries, and one server-paginated traceable-content page after the normal freshness check. | Full artifact payload, new semantic analysis, truth verdict |
+| **Semantic Evidence Workspace** | The single `/risk/semantic-evidence` analyst surface that shares one event scope and filter state across semantic evidence, clusters, entities, temporal slices, and traceable content. Historical split URLs redirect to this workspace. | Five independent product pages, fact-checking dashboard |
+| **Semantic Page Projection** | A bounded compatibility view for a legacy semantic endpoint. It exposes only the requested view and remains available to internal consumers; it is not the primary Event Review Case navigation path. | Full artifact payload, new semantic analysis, truth verdict |
+| **Traceable Content** | Snapshot content with a stable evidence reference and, when available, a source URL. Traceability permits source inspection only; it does not establish factual truth. | Verified fact, fact-check result |
+| **Persisted Governance Reference** | A governance reference recorded in the completed Teacher audit sidecar for one Event Review Case. It must not be reconstructed from the current governance catalog. | Current policy lookup, retrospective policy decision |
 | **Hard-Case Candidate** | An offline Student-derived manifest row selected for later analyst or explicitly authorized Teacher review. | Deferred prediction, automatic escalation |
 | **Active Pointer** | The currently selected version reference for a review capability. | Default model, live model |
 | **Model Candidate** | A registered, versioned model artifact that is eligible for review but is not yet selected by an Active Pointer. | Live model, deployed model |
@@ -159,8 +171,9 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | --- | --- | --- |
 | **Social Bot Detection** | Account-level classification of social automation using learned account representations and approved evidence. | Automation score, activity rule |
 | **Fixed-Graph Research Runtime** | A hash-verified runtime that replays or queries predictions for a fixed benchmark graph and is not an online model activation source. | Online detector, active model |
-| **Account Finding** | The concise analyst-facing conclusion projected from Social Bot Detection for an Account Profile. | Bot probability, automation rating, model result panel |
+| **Account Finding** | The concise analyst-facing conclusion projected from Social Bot Detection for an Account Profile. A currently requested detection projection may include its declared probability; it never exposes rule scores or runtime internals. | Automation rating, model result panel |
 | **Account Profile** | The business-facing view of a collected account, including nickname, platform, activity context, recent public posts, and an Account Finding. | User scorecard, detection dashboard |
+| **Similar Account** | A platform-scoped account returned in the current detector output's stable feature-proximity order for Account Profile drill-down. It is not a social, follower, friend, repost, or coordination relationship. | Social neighbor, relationship evidence, Top-K |
 | **BotRHG Transfer** | The internal trainable transfer implementation of Reliability-Guided Hypergraph Learning for Social Bot Detection. | NLPCC proxy, graph detector shell |
 | **Low-Order Detector** | The first-stage trainable account classifier whose representation and posterior seed reliability routing. | Base rule, heuristic detector |
 | **Support Hyperedge** | A target-centered KNN reference set built from learned account representations, excluding the target itself. | Similar-user list, handcrafted neighborhood |
@@ -184,7 +197,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - An **Event Snapshot** feeds one or more **Event Review Case** revisions.
 - An **Event Review Case** surfaces a **Preliminary Finding**, **Evidence Sufficiency**, optional **Review Advisory**, and an optional **Confirmed Decision**.
 - An **Evidence Annotation** belongs to one immutable evidence item and can update the case activity stream.
-- Automatic routing can request an internal review advisory after successful collection when evidence sufficiency or urgency warrants it.
+- Automatic routing creates the snapshot-bound **Student Bundle** after successful collection. It cannot request **Teacher Review**; an analyst Review API request is required.
 - A **Coordination Signal** creates one or more **Evidence Objects**.
 - An **Evidence Graph** links accounts to **Evidence Objects** and preserves relation type plus timestamp.
 - **Evidence-Constrained Discovery** consumes an **Evidence Graph** and produces candidate **Coordination Communities** with auditable evidence references.
@@ -202,6 +215,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - **Review** consumes content, coordination, and propagation evidence and produces a **Review Verdict**.
 - **Teacher Review** may create quality-gated **Teacher Silver Records** for **Review Student** auxiliary supervision after the appropriate review and provenance checks.
 - **Review Student** may create a **Hard-Case Candidate**, but only an analyst Review API request activates **Review Teacher** in production.
+- A **Countermeasure Report** is emitted only after the related **Teacher Review** has a parseable Judge conclusion, traceable input spans, and a **Persisted Governance Reference**. Its activity event is advisory-only and never changes a **Confirmed Decision**.
 - **EvidenceRAG**, **PolicyRAG**, and **ReasonBank** are separate retrieval boundaries; policy text cannot be treated as factual evidence, and factual retrieval cannot authorize a governance action.
 - An **Evidence Relation** is `not_applicable` until **Claim Assessment** is `checkable` and **Retrieval Status** is completed with traceable sources and quoted spans; only then can it be `supported`, `contradicted`, `conflicting`, or `insufficient`.
 - **Rationale Capsules** are auxiliary supervision artifacts, not faithful reconstructions of an Agent chain or causal explanations.

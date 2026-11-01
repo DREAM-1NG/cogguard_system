@@ -153,6 +153,10 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `app.core.risk` and `app.core.coordination` are legacy application aliases.
 - `system/research/*_legacy_alias` and `system/runtimes/*_legacy_alias` are import-only compatibility packages.
 - `system/backend/app/services/review_case_service.py` and `system/backend/app/api/v2/review_cases.py` are the product case boundary.
+- `system/backend/app/core/semantic/page_projection.py` owns bounded Semantic
+  Workspace Projection construction. It may derive linked aggregates from a
+  verified immutable artifact but must never move complete `layers` into the
+  Event Review Case browser payload.
 - `system/backend/app/services/crawl_service.py` owns selected Crawl Job post and
   comment scope. `system/backend/app/services/media_download_service.py` owns
   manifest-root validation and local-media resolution. Product API responses
@@ -170,7 +174,7 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 ### Durable Review And Model Governance
 
 - The primary frontend is a business-facing Event Review Case workspace. It may show concise Chinese business conclusions, Evidence Sufficiency, evidence references, Coordination Discover account display names, Review Advisory differences, analyst activity, and the Confirmed Decision. It must not render transient internal-status notices, raw runtime rationale, or a propagation summary in that workspace.
-- Account Profile is a business-facing companion view. It may show nickname, platform, activity context, recent public posts, and a concise account finding. Rule-derived scores, detector probabilities, method identifiers, runtime modes, and support-graph internals must remain outside product presentation.
+- Account Profile is a business-facing companion view. It may show nickname, platform, activity context, recent public posts, and a concise account finding. After an analyst explicitly runs current-scope detection, it may show that projection's declared probability and platform-scoped Similar Accounts for drill-down. Rule-derived scores, method identifiers, runtime modes, and support-graph internals must remain outside product presentation; Similar Accounts must not be described as a social, follower, repost, or coordination relationship.
 - Model versions, artifact paths and hashes, agent graphs, queue internals, active pointers, and rollback controls belong to the authenticated backend control plane. Do not add a technical governance page to the primary frontend.
 - `ANALYSIS_TEACHER_DISPATCH_MODE=auto` permits `local_inline_fallback` only for local deployments. Production resolves to `queue_required`; a broker failure is persisted as a retryable failed Teacher advisory and is never silently completed in API process memory.
 - `ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE=auto` permits one accountable operator locally. Production requires two distinct active administrator records in `analysis_model_activation_approvals`, created through authenticated approval actions; activation requests must not accept caller-supplied approver identities.

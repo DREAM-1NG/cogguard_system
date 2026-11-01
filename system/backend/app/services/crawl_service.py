@@ -155,6 +155,25 @@ async def query_posts(query: CrawlDataQuery) -> tuple[list[dict], int]:
     return items, total
 
 
+def with_local_media_summary(post: dict, local_media: list[dict]) -> dict:
+    """Attach safe, presentation-ready local media availability to one post."""
+
+    media_types = sorted(
+        {
+            str(item.get("media_type") or "").strip().lower()
+            for item in local_media
+            if str(item.get("media_type") or "").strip().lower() in {"image", "video"}
+        }
+    )
+    return {
+        **post,
+        "local_media": {
+            "available_count": len(local_media),
+            "types": media_types,
+        },
+    }
+
+
 async def query_post_comments(
     *,
     platform: str,

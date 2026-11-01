@@ -33,6 +33,7 @@ from app.schemas.review_case import (
     CaseActivity,
     CaseActivityList,
     CaseActivityType,
+    CountermeasureReport,
     ConfirmedDecision,
     DecisionConfirmation,
     DecisionConfirmRequest,
@@ -45,7 +46,11 @@ from app.schemas.review_case import (
     EvidencePage,
     ReviewAdvisory,
     TeacherAudit,
+    TeacherAuditGovernance,
+    TeacherAuditGovernanceReference,
     TeacherAuditRationale,
+    TeacherAuditSelection,
+    TeacherAuditSelectionItem,
     TeacherAuditSource,
     TeacherAuditStage,
     ReviewCaseDetail,
@@ -55,6 +60,10 @@ from app.schemas.review_case import (
     ReviewConclusion,
     ReviewRequestCreate,
     ReviewRequestReceipt,
+    ReviewTask,
+    StudentAssessment,
+    StudentAxisAssessment,
+    StudentReassessmentReceipt,
     ReviewUrgency,
 )
 from app.services.review_case_decision_feedback import (
@@ -77,6 +86,8 @@ from app.services.review_case_product_projection import (
     build_case_summary,
     build_evidence_item,
 )
+from app.services.review_case_analysis_projection import project_student_result
+from app.services.review_case_repository import CaseRevisionRef, SqlAlchemyReviewCaseRepository
 from app.services.event_data import load_event_account_names
 
 
@@ -130,7 +141,7 @@ class ReviewCaseService:
         deliberately excluded from the product contract.
         """
 
-        await self._get_case(case_id)
+        case = await self._get_case(case_id)
         revision = await self._latest_revision(case_id)
         if revision is None:
             return TeacherAudit(case_id=case_id, status="unavailable")
@@ -148,6 +159,122 @@ class ReviewCaseService:
             return TeacherAudit(case_id=case_id, status="unavailable")
         verdict = _json_loads(row.verdict_json, {})
         return _teacher_audit_model(case_id=case_id, row=row, verdict=verdict)
+
+    async def student_assessment(self, case_id: str) -> StudentAssessment:
+        """Read the latest snapshot-bound Student artifact without recomputation."""
+
+        case = await self._get_case(case_id)
+        revision = await self._latest_revision(case_id)
+        if revision is None:
+            return StudentAssessment(case_id=case_id, status="unavailable")
+        runs = await self.registry.list_runs_for_event(event_id=case.event_id)
+        for run in runs or []:
+            if str(run.get("snapshot_id") or "") != revision.snapshot_id:
+                continue
+            if "student" not in list(run.get("requested_stages") or []):
+                continue
+            try:
+                verdict = await self.registry.load_run_artifact(str(run["run_id"]), "stage:student:result")
+            except (KeyError, ValueError):
+                continue
+            if isinstance(verdict, dict):
+                return _student_assessment_model(
+                    case_id=case_id,
+                    snapshot_id=revision.snapshot_id,
+                    verdict=verdict,
+                    assessed_at=run.get("finished_at") or run.get("updated_at"),
+                )
+        return StudentAssessment(case_id=case_id, snapshot_id=revision.snapshot_id, status="unavailable")
+
+    async def reanalyze_student(self, case_id: str, *, actor: User) -> StudentReassessmentReceipt:
+        """Create a new, explicit Student-only run for the current snapshot."""
+
+        case = await self._get_case(case_id, for_update=True)
+        revision = await self._require_latest_revision(case_id)
+        from app.core.analysis.executor import AnalysisExecutor, default_analysis_engine_ports
+
+        run = await self.registry.create_run(
+            event_id=case.event_id,
+            snapshot_id=revision.snapshot_id,
+            requested_stages=["student"],
+            options={"source": "review_case_explicit_student_reassessment"},
+            created_by=_actor_id(actor),
+        )
+        result = await AnalysisExecutor(
+            registry=self.registry,
+            engines=default_analysis_engine_ports(),
+        ).execute_run(str(run["run_id"]))
+        student = dict((result.get("results") or {}).get("student") or {})
+        snapshot = await self.registry.load_event_snapshot(revision.snapshot_id)
+        projection = project_student_result(
+            snapshot=snapshot,
+            student=student,
+            existing_business_summary=_json_loads(case.business_summary_json, {}),
+        )
+        await SqlAlchemyReviewCaseRepository(self.db).apply_student_projection(
+            ref=CaseRevisionRef(
+                case_id=case_id,
+                snapshot_revision_id=revision.snapshot_revision_id,
+                revision_number=revision.revision_number,
+                created_case=False,
+                created_revision=False,
+            ),
+            projection=projection,
+            created_by=_actor_id(actor),
+        )
+        await self.append_activity(
+            case_id=case_id,
+            snapshot_revision_id=revision.snapshot_revision_id,
+            activity_type=CaseActivityType.STUDENT_ASSESSED,
+            action_required=ActionRequired.NONE,
+            summary="Student assessment refreshed for the current snapshot.",
+            detail_lines=[str(student.get("status") or "unknown")],
+            evidence_refs=[],
+            actor=actor,
+            source_ref=str(run["run_id"]),
+        )
+        return StudentReassessmentReceipt(
+            case_id=case_id,
+            status=str(student.get("status") or "failed"),
+            message="Student assessment refreshed for the current snapshot.",
+        )
+
+    async def countermeasure_report(self, case_id: str) -> CountermeasureReport:
+        await self._get_case(case_id)
+        revision = await self._latest_revision(case_id)
+        if revision is None:
+            return CountermeasureReport(case_id=case_id, status="unavailable", reason="No snapshot is available.")
+        row = await self._latest_teacher_verdict(revision.snapshot_id)
+        if row is None:
+            return CountermeasureReport(
+                case_id=case_id,
+                snapshot_id=revision.snapshot_id,
+                status="not_generated",
+                reason="No completed Teacher audit is available for this snapshot.",
+            )
+        verdict = _json_loads(row.verdict_json, {})
+        report = verdict.get("countermeasure_report") if isinstance(verdict, dict) else None
+        return _countermeasure_report_model(
+            case_id=case_id,
+            snapshot_id=revision.snapshot_id,
+            teacher_audit_id=str(verdict.get("verdict_id") or row.verdict_id),
+            report=report if isinstance(report, dict) else {},
+        )
+
+    async def countermeasure_markdown(self, case_id: str) -> str:
+        return _countermeasure_markdown(await self.countermeasure_report(case_id))
+
+    async def _latest_teacher_verdict(self, snapshot_id: str) -> ReviewVerdictVersion | None:
+        result = await self.db.execute(
+            select(ReviewVerdictVersion)
+            .where(
+                ReviewVerdictVersion.snapshot_id == snapshot_id,
+                ReviewVerdictVersion.verdict_type == "teacher_advisory",
+            )
+            .order_by(desc(ReviewVerdictVersion.created_at), desc(ReviewVerdictVersion.id))
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
 
     async def evidence(
         self,
@@ -307,6 +434,8 @@ class ReviewCaseService:
             db=self.db,
             mongo_db=self.registry.mongo_db,
             requested_by=_actor_id(actor),
+            review_tasks=[task.value for task in request.review_tasks],
+            evidence_refs=request.evidence_refs,
             routing_reasons=["manual_request"],
         )
         return ReviewRequestReceipt(
@@ -1089,6 +1218,88 @@ def _legacy_source_ref(*parts: str) -> str:
     return f"legacy_{hashlib.sha256(raw.encode('utf-8')).hexdigest()[:32]}"
 
 
+def _student_assessment_model(
+    *,
+    case_id: str,
+    snapshot_id: str,
+    verdict: dict[str, Any],
+    assessed_at: Any,
+) -> StudentAssessment:
+    raw_axes = verdict.get("axes") if isinstance(verdict.get("axes"), dict) else {}
+    axes: list[StudentAxisAssessment] = []
+    for task in (ReviewTask.INTERPERSONAL_HARM, ReviewTask.CLAIM_DECEPTION):
+        raw = raw_axes.get(task.value)
+        if not isinstance(raw, dict):
+            continue
+        conclusion = raw.get("conclusion")
+        axes.append(
+            StudentAxisAssessment(
+                task=task,
+                status=str(raw.get("status") or "unavailable"),
+                conclusion=conclusion if conclusion in {"harmful", "non_harmful", "insufficient_evidence"} else None,
+                risk_score=_score(raw.get("risk_score")),
+                threshold=_score(raw.get("threshold")),
+                rationale=_product_text(raw.get("rationale"), limit=800),
+            )
+        )
+    return StudentAssessment(
+        case_id=case_id,
+        snapshot_id=snapshot_id,
+        status=str(verdict.get("status") or "unavailable"),
+        assessed_at=assessed_at,
+        axes=axes,
+    )
+
+
+def _countermeasure_report_model(
+    *,
+    case_id: str,
+    snapshot_id: str,
+    teacher_audit_id: str,
+    report: dict[str, Any],
+) -> CountermeasureReport:
+    return CountermeasureReport(
+        case_id=case_id,
+        snapshot_id=snapshot_id,
+        teacher_audit_id=teacher_audit_id or None,
+        status=str(report.get("status") or "not_generated"),
+        reason=_product_text(report.get("reason"), limit=800),
+        risk_summary=_product_text(report.get("risk_summary"), limit=1200),
+        evidence_refs=_bounded_strings(report.get("evidence_refs"), limit=50, text_limit=256),
+        policy_refs=_bounded_strings(report.get("policy_refs"), limit=50, text_limit=256),
+        recommended_actions=_bounded_strings(report.get("recommended_actions"), limit=12, text_limit=512),
+        response_draft=_product_text(report.get("response_draft"), limit=2400),
+        limitations=_bounded_strings(report.get("limitations"), limit=12, text_limit=512),
+        quality_gate=bool(report.get("quality_gate")),
+    )
+
+
+def _countermeasure_markdown(report: CountermeasureReport) -> str:
+    lines = ["# 反制建议草案", "", f"状态：{report.status}", "", "## 风险摘要", report.risk_summary or report.reason or "未生成报告。"]
+    if report.recommended_actions:
+        lines.extend(["", "## 建议人工处置", *[f"- {item}" for item in report.recommended_actions]])
+    if report.response_draft:
+        lines.extend(["", "## 建议回应草案", report.response_draft])
+    if report.evidence_refs:
+        lines.extend(["", "## 依据引用", *[f"- {item}" for item in report.evidence_refs]])
+    if report.policy_refs:
+        lines.extend(["", "## 治理条款", *[f"- {item}" for item in report.policy_refs]])
+    lines.extend(["", "## 使用限制", *[f"- {item}" for item in (report.limitations or ["仅供人工确认，不自动执行任何外部处置。"])]] )
+    return "\n".join(lines).strip() + "\n"
+
+
+def _score(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if 0 <= parsed <= 1 else None
+
+
+def _bounded_strings(value: Any, *, limit: int, text_limit: int) -> list[str]:
+    return [item[:text_limit] for item in _safe_string_list(value)[:limit]]
+
+
 def _teacher_audit_model(*, case_id: str, row: ReviewVerdictVersion, verdict: dict[str, Any]) -> TeacherAudit:
     evidence = verdict.get("evidence") if isinstance(verdict.get("evidence"), dict) else {}
     raw_reports = evidence.get("agent_reports") or verdict.get("agent_reports") or []
@@ -1127,6 +1338,8 @@ def _teacher_audit_model(*, case_id: str, row: ReviewVerdictVersion, verdict: di
             rationale = _teacher_rationale(sidecar)
     sources = _dedupe_teacher_sources(all_sources)
     queries = _dedupe_text(all_queries)
+    governance = _teacher_governance(reports)
+    selection = _teacher_selection(verdict)
     signals = verdict.get("signals") if isinstance(verdict.get("signals"), dict) else {}
     maro = signals.get("maro") if isinstance(signals.get("maro"), dict) else {}
     advisory = verdict.get("advisory") if isinstance(verdict.get("advisory"), dict) else {}
@@ -1138,6 +1351,7 @@ def _teacher_audit_model(*, case_id: str, row: ReviewVerdictVersion, verdict: di
         "query_count": len(queries),
         "rationale_available": rationale.available,
         "rationale_quality_gate": rationale.quality_gate,
+        "governance_available": governance.available,
         "external_followup_required": bool(advisory.get("external_followup_required")),
         "audit_source": "persisted_teacher_verdict",
     }
@@ -1164,8 +1378,47 @@ def _teacher_audit_model(*, case_id: str, row: ReviewVerdictVersion, verdict: di
         sources=sources,
         queries=queries,
         rationale=rationale,
+        governance=governance,
+        selection=selection,
         quality=quality,
     )
+
+
+def _teacher_selection(verdict: dict[str, Any]) -> TeacherAuditSelection:
+    raw = verdict.get("audit_input_selection")
+    if not isinstance(raw, dict):
+        return TeacherAuditSelection()
+    items: list[TeacherAuditSelectionItem] = []
+    for item in raw.get("items") or []:
+        if not isinstance(item, dict):
+            continue
+        post_id = _bounded_text(item.get("post_id"), 256)
+        if not post_id:
+            continue
+        engagement = item.get("engagement") if isinstance(item.get("engagement"), dict) else {}
+        items.append(
+            TeacherAuditSelectionItem(
+                post_id=post_id,
+                platform=_bounded_text(item.get("platform"), 64),
+                author_name=_bounded_text(item.get("author_name"), 128),
+                excerpt=_bounded_text(item.get("excerpt"), 600),
+                reposts=_nonnegative_int(engagement.get("reposts")),
+                likes=_nonnegative_int(engagement.get("likes")),
+                comments=_nonnegative_int(engagement.get("comments")),
+            )
+        )
+    return TeacherAuditSelection(
+        source=_bounded_text(raw.get("source"), 64),
+        criteria=_dedupe_text(raw.get("selection_criteria") or [])[:6],
+        items=items[:20],
+    )
+
+
+def _nonnegative_int(value: Any) -> int:
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return 0
 
 
 def _teacher_stage(*, name: str, report: dict[str, Any], node: dict[str, Any]) -> TeacherAuditStage:
@@ -1248,6 +1501,83 @@ def _teacher_rationale(sidecar: dict[str, Any]) -> TeacherAuditRationale:
         quality_gate=bool(raw.get("capsule_quality_gate") or raw.get("quality_gate")),
         citation_coverage=coverage_value,
     )
+
+
+def _teacher_governance(reports: list[dict[str, Any]]) -> TeacherAuditGovernance:
+    """Project governance recorded by this audit without consulting current rules."""
+
+    ordered_reports = sorted(
+        reports,
+        key=lambda report: 0 if _bounded_text(report.get("report_role"), 64).lower() == "judge" else 1,
+    )
+    for report in ordered_reports:
+        raw = _teacher_sidecar(report).get("governance_report")
+        if not isinstance(raw, dict):
+            continue
+        category_id = _bounded_text(raw.get("governance_category_id"), 128)
+        category = _bounded_text(raw.get("governance_category"), 256)
+        actions = _dedupe_bounded_text(raw.get("recommended_actions"), 512, 20)
+        confirmations = _dedupe_bounded_text(raw.get("human_confirmation_items"), 512, 20)
+        references = _teacher_governance_references(raw)
+        governance = TeacherAuditGovernance(
+            available=bool(category_id or category or actions or confirmations or references),
+            category_id=category_id,
+            category=category,
+            recommended_actions=actions,
+            human_confirmation_items=confirmations,
+            references=references,
+        )
+        # Earlier specialist stages can legitimately have an empty sidecar.
+        # Continue until a stage that actually used a persisted reference.
+        if governance.available:
+            return governance
+    return TeacherAuditGovernance()
+
+
+def _teacher_governance_references(raw: dict[str, Any]) -> list[TeacherAuditGovernanceReference]:
+    values = raw.get("platform_reference_refs") or raw.get("references") or []
+    if not isinstance(values, list):
+        return []
+    result: list[TeacherAuditGovernanceReference] = []
+    seen: set[str] = set()
+    for item in values:
+        if not isinstance(item, dict):
+            continue
+        reference_id = _bounded_text(
+            item.get("ref_id") or item.get("reference_id") or item.get("id") or item.get("url"),
+            256,
+        )
+        if not reference_id or reference_id in seen:
+            continue
+        seen.add(reference_id)
+        result.append(
+            TeacherAuditGovernanceReference(
+                reference_id=reference_id,
+                platform=_bounded_text(item.get("platform"), 256),
+                title=_bounded_text(item.get("title") or item.get("name"), 512),
+                url=_optional_bounded(item.get("url") or item.get("source_uri"), 2048),
+                reference_type=_bounded_text(item.get("reference_type") or item.get("type"), 64),
+                governance_use=_bounded_text(item.get("governance_use") or item.get("use"), 512),
+            )
+        )
+        if len(result) == 50:
+            break
+    return result
+
+
+def _dedupe_bounded_text(values: Any, limit: int, max_items: int) -> list[str]:
+    if isinstance(values, str):
+        values = [values]
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values if isinstance(values, (list, tuple, set)) else []:
+        text = _bounded_text(value, limit)
+        if text and text not in seen:
+            seen.add(text)
+            result.append(text)
+        if len(result) == max_items:
+            break
+    return result
 
 
 def _dedupe_teacher_sources(values: list[TeacherAuditSource]) -> list[TeacherAuditSource]:

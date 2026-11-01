@@ -1,5 +1,39 @@
 ﻿# 开发变更日志
 
+## 2026-08-17: Semantic workspace render-boundary pass
+
+- Standardized Semantic Evidence panels on one blue-gray evidence treatment,
+  changed grids to content-height alignment, and reduced panel padding. The
+  keyword summary is capped at 32 terms with a 300-400px responsive canvas;
+  the overview no longer stretches the signal card to the word-cloud height.
+- Grouped the route's known Ant Design controls into a bounded
+  `semantic-workspace-ui` feature chunk. The production manifest records a
+  461,770-byte UI bundle and ten semantic-route imports, rather than a
+  per-control request graph. Below-the-fold ledgers use `content-visibility`
+  to avoid delaying first paint.
+- Validation: `node --test tests/*.spec.mjs` reported `168 passed`,
+  `vue-tsc -b` passed, and the production build verifier kept every JavaScript
+  asset below 1 MB. No authenticated browser settled-time trace was available,
+  so this entry makes no measured latency claim.
+
+## 2026-08-17: Account Profile master-detail workbench
+
+- Replaced the account table and wide detail drawer with a desktop master-detail
+  workspace. The left list maintains event, platform, refresh, and detection
+  controls; the selected account appears on the right with a concise finding,
+  recent posts, and a ranked similar-account drill-down.
+- Added URL restoration for `event_id`, `platform`, `account_id`, and the
+  selected account platform. Profile and detail request generations reject stale
+  responses, while refreshes preserve a valid current selection.
+- “相似账号” preserves the platform-local order returned by the current detector
+  output. It is explicitly bounded to account-feature proximity and does not
+  claim a social, follower, or repost relationship. Missing evidence remains an
+  explicit empty state.
+- Validation: account workbench contracts, review contracts, `npm test`
+  (`165 passed`), and `vue-tsc -b` passed. Vite compiled the frontend, but the
+  static delivery verifier rejected the pre-existing `ant-ui` chunk at
+  `1,148,848 bytes` against the `1,000,000` byte budget; no budget was changed.
+
 ## 2026-08-17: Crawl Evidence Workbench recovery checkpoint
 
 - Created the source recovery checkpoint `dfe54f3` and annotated tag
@@ -1294,6 +1328,123 @@
   the page had no horizontal overflow. Authenticated API/browser smoke remains
   blocked by local MySQL refusal and Docker Desktop Linux Engine unavailability.
 
+## 2026-08-17: Semantic analyst views and persisted governance projection
+
+- Added independent `/risk/*` Event Review Case subpages for semantic evidence,
+  semantic clusters, named entities, temporal change, and traceable content.
+  All five read the selected event's saved semantic artifact; none recomputes
+  analysis or creates a new Review request.
+- Traceable content exposes only snapshot text, stable evidence reference, and
+  optional source URL. The product copy explicitly distinguishes traceability
+  from factual verification.
+- Dashboard and the Event Review Case workspace now project recommendations,
+  confirmation items, and governance links only from the selected completed
+  Teacher audit's persisted governance sidecar. The UI intentionally does not
+  reconstruct historical references from current governance configuration.
+- Added source-level frontend contracts and backend teacher-audit coverage.
+  No external LLM, retrieval provider, or training run was invoked for this
+  UI work.
+
+## 2026-08-17: Review overview first-load reduction
+
+- Removed the intelligent-audit panel and embedded semantic-evidence panel
+  from `/risk`. The overview now requests only the selected case, its active
+  evidence page, and its activity stream; it keeps the analyst review-request
+  action and decision workflow.
+- Audit governance references remain available on the dashboard only. Semantic
+  artifacts remain available through their independent `/risk/*` subpages and
+  are loaded only after an analyst opens one of those routes.
+- Removed the review overview's audit/semantic state, validation code, imports,
+  and component-specific CSS, with source-level tests protecting the no-request
+  boundary.
+
+## 2026-08-17: Semantic subpage compact projections
+
+- Replaced the five `/risk/*` subpages' complete semantic-artifact download and
+  browser-side record aggregation with a bounded `Semantic Page Projection` API.
+  Evidence, clusters, entities, and temporal views receive only their required
+  aggregates; traceable content receives one 40-row server-paginated page.
+- The complete artifact endpoint remains compatible for existing internal
+  consumers. Compact responses run through the same ready-artifact integrity and
+  snapshot-freshness checks, then use the versioned query cache keyed by event,
+  run, snapshot fingerprint, view, and page.
+- The keyword cloud is contained to the semantic workspace route and uses a
+  bounded high-frequency summary rather than the complete keyword aggregate.
+  No before/after authenticated browser latency measurement was collected here.
+
+## 2026-08-17: Semantic aggregate read-model acceleration
+
+- New semantic analysis runs now persist a compact `Semantic Page Read Model`
+  beside the complete artifact. It contains only the bounded evidence, cluster,
+  entity, and temporal aggregates, pins the complete artifact SHA-256 and
+  snapshot fingerprint, and never carries `layers` or traceable source rows.
+- Aggregate `/risk/*` pages now prefer that small verified artifact. Legacy runs
+  retain the complete-artifact projection path for one verified read and then
+  may materialize the same pinned read model. The traceable-content page remains
+  server-paginated from the complete artifact by design.
+- The evidence word cloud waits until the compact content has painted, and its
+  deterministic placement now uses a local spatial index rather than scanning
+  every prior word for each collision candidate.
+- Verification: targeted backend projection/API/executor tests passed; frontend
+  type, production-build, and authenticated browser timing checks remain pending
+  for this entry.
+
+## 2026-08-17: Semantic Evidence Workspace unification
+
+- Replaced the five independent Event Review semantic pages with one
+  `/risk/semantic-evidence` workspace. Keyword, sentiment, stance, topic,
+  entity, time, platform, and traceable-content selections now share one
+  event scope and server-side filter contract. The four historical URLs redirect
+  to this workspace and preserve `event_id` and `case_id`.
+- Added `GET /api/v2/analysis/events/{event_id}/semantic/workspace`. New
+  semantic runs persist a source-hash-pinned read model containing bounded
+  aggregate views, cross-facet relations, and one initial traceable page capped
+  at 40 rows, never complete `layers`. A selected facet causes a server-side
+  re-projection from the verified immutable artifact, so the browser does not
+  deserialize the full record set to restore cross-signal linkage.
+- The former `views/{view}` API remains a compatibility surface. The complete
+  artifact still remains internal. Traceable content continues to mean source
+  inspectability rather than automated fact verification.
+- Verification is limited to targeted backend projection/API/executor tests,
+  frontend contracts, typecheck, and production build. No authenticated browser
+  response-size or settled-time measurement has been claimed for this change.
+
+## 2026-08-17: Semantic workspace query-path acceleration
+
+- Replaced the global semantic artifact-root scan with the indexed
+  `analysis_runs.event_id` lookup followed by exact artifact-root reads. This
+  keeps candidate selection scoped to the requested Event Review Case.
+- A successful source-freshness verification is reused for at most 15 seconds;
+  expiry rebuilds the current source snapshot and preserves the existing
+  fail-closed mismatch behavior. Filtered workspace projections now check their
+  immutable result cache before reading the complete semantic artifact.
+- Verification: semantic registry, cache, and product API tests passed (`30
+  passed`, one existing Transformers cache deprecation warning). No
+  authenticated browser timing claim is recorded for this change.
+
+## 2026-08-17: Semantic workspace delivery-boundary verification
+
+- Replaced synchronous global Ant Design component registration with the
+  asynchronous registry at `system/frontend/src/ui/antDesignComponents.ts`.
+  Existing `a-*` templates remain unchanged, while component implementations
+  are fetched only when a rendered route needs them. The production entry no
+  longer emits a single 1 MB-plus `ant-ui` startup chunk.
+- Updated Vite to use `onlyExplicitManualChunks`, preventing the explicit
+  Three.js graph groups from absorbing dynamic UI dependencies. The manifest
+  derived idle preload plan again excludes `graph3d-view`, `graph-layout`,
+  `three-renderer`, and `three-addons`; the production build passed its 1 MB
+  JavaScript chunk budget.
+- Tightened the unified semantic page's interaction semantics: the review
+  transition is now a router link, the layer control has a programmatic label,
+  and the selectable time strip is a named group rather than an image role.
+  The keyword cloud no longer declares nested list roles around SVG buttons.
+- Validation: frontend route/API/load-boundary contracts `15 passed`,
+  `vue-tsc -b`, and `npm run build` passed. Backend semantic projection/API/
+  executor tests reported `32 passed, 1 warning`; the warning is the existing
+  Transformers `TRANSFORMERS_CACHE` deprecation. No authenticated browser
+  settled-time measurement was run because no valid local analyst session was
+  available to this task.
+
 ## 2026-08-17: System operations API-version contract repair
 
 - Audited every mounted product page API against the running backend OpenAPI.
@@ -1327,3 +1478,53 @@
   `vue-tsc -b` 通过，生产构建与 `scripts/verify-build.mjs` 通过；warning 为 Transformers
   的 `TRANSFORMERS_CACHE` 弃用提示。`features/crawl/model.ts` 的未使用参数只做了下划线
   命名清理，采集工作台其他 WIP 边界未改变。
+
+## 2026-08-17: Event Review real audit and Countermeasure wiring
+
+- Replaced the Review shadow path with the approved, snapshot-bound Student
+  Bundle. The harm axis uses the approved HateCoT XLM-R LRKD artifact; the
+  untrained claim-deception axis projects `unconfigured` instead of a keyword
+  estimate.
+- Teacher audits are analyst-triggered, asynchronous, and MARO-compatible.
+  Provider, input, format, or orchestration failures persist as failed audits
+  and append `teacher_review_failed`; no deterministic advisory is substituted.
+- Added a Judge-post Countermeasure Report bound to snapshot and audit ID. It
+  requires a parseable Judge conclusion, input references, and Teacher-used
+  governance references. A quality-gated draft appends
+  `countermeasure_report_available`, is downloadable as Markdown, and cannot
+  execute external actions.
+- `/risk` now defers Student, Teacher, governance, and Countermeasure fetches
+  to their panels and does not request semantic/evidence data during initial
+  case loading. The human decision draft and immutable confirmation flow remain
+  unchanged.
+- Validation: backend targeted tests `25 passed`; frontend contracts
+  `161 passed`; targeted Python compilation passed. No external LLM, model
+  training, RAG evaluation, or authenticated browser run was performed.
+
+## 2026-08-18: Trump visit real Teacher audit deployment
+
+- Activated the approved HateCoT XLM-R LRKD harm Student bundle for the
+  `trump_visit_2026_05_21` snapshot. The claim-deception axis remains
+  `unconfigured`; no keyword fallback was used.
+- Submitted an analyst-triggered, DeepSeek-backed MARO-compatible content-harm
+  audit through the Review Case API. The execution selected six event posts by
+  repost, like, and comment counts, completed all bounded stages, and persisted
+  a 39,509-byte audit projection rather than full Agent traces.
+- Fixed two deployment defects found during the real run: new Teacher audits
+  now have independent IDs, and an old draft without a durable Celery task no
+  longer blocks a retry. Governance projection now skips empty specialist
+  sidecars and displays the Judge's actual persisted references.
+- Verified Student, Teacher Audit, Countermeasure, and Markdown download APIs:
+  the completed audit projects six selected posts, eight bounded stages, four
+  actual governance references, and a quality-gated Countermeasure draft with
+  four policy references. No external action was automated.
+
+## 2026-08-18: Event Review compact workflow chain
+
+- Simplified the `/risk` chain heading to `本案研判链` and removed the duplicate
+  subtitle. Each long review step is now a keyboard-accessible, collapsed-by-
+  default native disclosure that keeps its stage and status visible.
+- Expanding a step reveals the already loaded Student, Teacher, governance, or
+  Countermeasure projection. This change does not create new inference or
+  retrieval requests, and the existing top-level actions and human-decision
+  workflow remain unchanged.

@@ -51,6 +51,33 @@ async def test_query_cache_key_changes_with_source_version(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_query_cache_skips_results_the_caller_marks_transient(monkeypatch):
+    monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_REDIS_ENABLED", False)
+    clear_local_query_result_cache()
+    calls = 0
+
+    async def builder():
+        nonlocal calls
+        calls += 1
+        return {"attempt": calls, "status": "blocked"}
+
+    key = build_query_cache_key("transient-projection", "event-1")
+    first = await get_or_build_query_result(
+        key,
+        builder,
+        should_cache=lambda result: result.get("status") == "ready",
+    )
+    second = await get_or_build_query_result(
+        key,
+        builder,
+        should_cache=lambda result: result.get("status") == "ready",
+    )
+
+    assert first["attempt"] == 1
+    assert second["attempt"] == 2
+
+
+@pytest.mark.asyncio
 async def test_query_cache_applies_configured_redis_ttl(monkeypatch):
     class RecordingRedis:
         def __init__(self) -> None:
@@ -72,6 +99,30 @@ async def test_query_cache_applies_configured_redis_ttl(monkeypatch):
     assert len(redis.calls) == 1
     assert redis.calls[0][0] == "cache-key"
     assert redis.calls[0][2] == 604800
+
+
+@pytest.mark.asyncio
+async def test_query_cache_rebuilds_after_an_explicit_short_ttl(monkeypatch):
+    monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_REDIS_ENABLED", False)
+    clear_local_query_result_cache()
+    now = 100.0
+    monkeypatch.setattr(query_result_cache.time, "monotonic", lambda: now)
+    calls = 0
+
+    async def builder():
+        nonlocal calls
+        calls += 1
+        return {"build": calls}
+
+    first = await get_or_build_query_result("short-lived", builder, ttl_seconds=5)
+    now = 104.0
+    second = await get_or_build_query_result("short-lived", builder, ttl_seconds=5)
+    now = 105.0
+    third = await get_or_build_query_result("short-lived", builder, ttl_seconds=5)
+
+    assert first == {"build": 1}
+    assert second == {"build": 1}
+    assert third == {"build": 2}
 
 
 class _SourceCollection:

@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import importlib.util
 import json
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -16,8 +13,9 @@ from sqlalchemy import select
 
 from app.core.review.agent_provider import OpenAICompatibleAgentProvider
 from app.core.review.agent_provider import OpenAICompatibleConfig
-from app.core.review.agent_provider import build_llm_provider_from_settings
 from app.core.review.agent_review import run_manual_agent_review
+from app.core.review.representative_posts import select_representative_posts
+from app.core.review.student_bundle_runtime import build_student_bundle_verdict
 from app.config import settings
 from app.db.mysql import async_session_factory
 from app.models.analysis import ReviewVerdictVersion
@@ -27,9 +25,6 @@ from app.utils.logger import logger
 ANALYSIS_STUDENT_MODEL_VERSION = "analysis-student-runtime-v1"
 ANALYSIS_TEACHER_MODEL_VERSION = "analysis-teacher-runtime-v1"
 ANALYSIS_TEACHER_SOURCE = "analysis.teacher.runtime.v1"
-SYSTEM_ROOT = Path(__file__).resolve().parents[4]
-REVIEW_STUDENT_RUNTIME_PATH = SYSTEM_ROOT / "runtimes" / "review_student" / "runtime.py"
-REVIEW_TEACHER_DAG_PATH = SYSTEM_ROOT / "research" / "review_teacher" / "dag.py"
 TEACHER_JOB_CACHE: dict[str, dict[str, Any]] = {}
 
 __all__ = [
@@ -58,8 +53,9 @@ class InternalTeacherJobPort:
 
 
 def build_student_verdict(case: dict[str, Any]) -> dict[str, Any]:
-    runtime = _load_review_student_runtime().StudentRuntime()
-    return runtime.predict_sync(case)
+    """Run the approved Student bundle without a heuristic shadow fallback."""
+
+    return build_student_bundle_verdict(case)
 
 
 def build_teacher_advisory_verdict(
@@ -67,11 +63,11 @@ def build_teacher_advisory_verdict(
     *,
     job_id: str | None = None,
 ) -> dict[str, Any]:
-    student = build_student_verdict(case)
-    verdict = _load_review_teacher_dag().run_teacher_dag(case, student=student, job_id=job_id)
-    return _mark_teacher_dag_fallback(
-        verdict,
-        fallback_reason="synchronous_teacher_runtime_uses_deterministic_dag",
+    return _teacher_failure(
+        _normalize_case(case),
+        job_id=job_id,
+        reason="Teacher audits require the asynchronous MARO-compatible provider chain.",
+        task_state="async_provider_required",
     )
 
 
@@ -83,53 +79,38 @@ async def build_teacher_advisory_verdict_async(
     """Build a non-canonical Teacher advisory through MARO when an LLM is available."""
     normalized = _normalize_case(case)
     student = build_student_verdict(case)
-    if student.get("status") == "data_insufficient" or not normalized["posts"]:
-        return _teacher_dag_fallback(
-            case,
-            student=student,
+    if not normalized["posts"]:
+        return _teacher_failure(
+            normalized,
             job_id=job_id,
-            fallback_reason="insufficient_case_evidence",
+            reason="The Teacher audit could not start because this snapshot has no text posts.",
+            task_state="input_unavailable",
         )
 
     maro_context = await _resolve_teacher_maro_context(normalized)
     provider = maro_context["provider"]
     if provider is None:
-        return _teacher_dag_fallback(
-            case,
-            student=student,
+        return _teacher_failure(
+            normalized,
             job_id=job_id,
-            fallback_reason=maro_context.get("fallback_reason") or "text_llm_provider_unavailable",
+            reason="The configured Teacher provider is unavailable.",
+            task_state=maro_context.get("fallback_reason") or "text_llm_provider_unavailable",
         )
 
     try:
-        maro_result = await run_manual_agent_review(
-            report=_teacher_maro_report(normalized, student=student, job_id=job_id),
-            agent_names=[
-                "PostHarmAgent",
-                "MultimodalConsistencyAgent",
-                "ClaimEvidenceAgent",
-                "PropagationTreeAgent",
-                "QuestionReflectionAgent",
-                "HarmfulnessJudgeAgent",
-            ],
-            case_id=job_id or _verdict_id("teacher", normalized),
-            selected_post_ids=[str(row.get("post_id") or row.get("id") or "") for row in normalized["posts"]],
-            human_triggered_by=normalized["created_by"],
-            provider=provider,
-            model=maro_context["model"],
-            provider_name=maro_context["provider_name"],
-            include_media_base64=maro_context["include_media_base64"],
-            require_vision=maro_context["require_vision"],
-            runtime_mode="complex",
-            policy=maro_context["policy"],
-            error_memory_summary=maro_context["error_memory_summary"],
-        )
-    except Exception as exc:
-        return _teacher_dag_fallback(
-            case,
+        maro_result = await _run_teacher_maro_chain(
+            normalized,
             student=student,
             job_id=job_id,
-            fallback_reason=f"maro_runtime_error:{type(exc).__name__}",
+            provider=provider,
+            maro_context=maro_context,
+        )
+    except Exception as exc:
+        return _teacher_failure(
+            normalized,
+            job_id=job_id,
+            reason="The Teacher audit provider or orchestration chain failed.",
+            task_state=f"maro_runtime_error:{type(exc).__name__}",
         )
     finally:
         close_provider = getattr(provider, "aclose", None)
@@ -137,11 +118,11 @@ async def build_teacher_advisory_verdict_async(
             await close_provider()
 
     if not _teacher_maro_chain_completed(maro_result):
-        return _teacher_dag_fallback(
-            case,
-            student=student,
+        return _teacher_failure(
+            normalized,
             job_id=job_id,
-            fallback_reason="maro_chain_incomplete",
+            reason="The Teacher audit did not return all required bounded stages.",
+            task_state="maro_chain_incomplete",
         )
     return _teacher_maro_advisory(
         normalized,
@@ -153,43 +134,22 @@ async def build_teacher_advisory_verdict_async(
     )
 
 
-def _load_review_student_runtime():
-    return _load_internal_module(
-        path=REVIEW_STUDENT_RUNTIME_PATH,
-        module_name="cogguard_review_student_runtime",
-        label="Review Student runtime",
-    )
-
-
-def _load_review_teacher_dag():
-    return _load_internal_module(
-        path=REVIEW_TEACHER_DAG_PATH,
-        module_name="cogguard_review_teacher_dag",
-        label="Review Teacher DAG",
-    )
-
-
-def _load_internal_module(*, path: Path, module_name: str, label: str):
-    if not path.is_file():
-        raise RuntimeError(f"{label} not found: {path}")
-    module = sys.modules.get(module_name)
-    if module is not None:
-        return module
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Unable to load {label} from {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-async def submit_teacher_review_job(case: dict[str, Any]) -> dict[str, Any]:
+async def submit_teacher_review_job(
+    case: dict[str, Any], *, review_tasks: list[str] | None = None
+) -> dict[str, Any]:
     normalized = _normalize_case(case)
-    job_id = _verdict_id("teacher", normalized)
+    if review_tasks:
+        normalized["options"] = {
+            **normalized["options"],
+            "teacher": {**dict(normalized["options"].get("teacher") or {}), "review_tasks": review_tasks},
+        }
+    # A human-triggered audit is an immutable review instance.  A stable
+    # snapshot digest would overwrite an earlier audit of the same snapshot.
+    job_id = _teacher_job_id(normalized)
     queued_result = {
         "technology": "teacher",
         "job_id": job_id,
+        "verdict_id": job_id,
         "status": "queued",
         "verdict_type": "teacher_advisory",
         "snapshot_id": normalized["snapshot_id"],
@@ -197,6 +157,7 @@ async def submit_teacher_review_job(case: dict[str, Any]) -> dict[str, Any]:
         "platforms": normalized["platforms"],
         "model_version": ANALYSIS_TEACHER_MODEL_VERSION,
         "task_state": "submitted",
+        "review_tasks": _teacher_review_tasks(normalized),
         "capability_boundary": _capability_boundary("teacher"),
     }
     TEACHER_JOB_CACHE[job_id] = queued_result
@@ -213,7 +174,7 @@ async def finalize_teacher_review_job(job_id: str, case: dict[str, Any]) -> dict
         job_id=job_id,
         case=_normalize_case(case),
         verdict=verdict,
-        status="completed",
+        status="completed" if verdict.get("status") == "completed" else "failed",
     )
     if not persisted:
         raise RuntimeError(f"Teacher advisory was not persisted: {job_id}")
@@ -275,19 +236,40 @@ async def _resolve_teacher_maro_context(case: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:
         logger.warning("Teacher MARO database context unavailable: {}", type(exc).__name__)
 
-    provider = build_llm_provider_from_settings(settings)
+    provider = _build_review_teacher_provider()
     if provider is None:
         return fallback
     return {
         "provider": provider,
-        "provider_name": "env_fallback",
-        "model": str(settings.LLM_MODEL),
-        "include_media_base64": bool(settings.LLM_INCLUDE_MEDIA_BASE64),
+        "provider_name": "review_teacher_env",
+        "model": str(settings.REVIEW_TEACHER_MODEL),
+        "include_media_base64": False,
         "require_vision": False,
         "policy": policy,
         "error_memory_summary": _teacher_feedback_memory(policy, feedback_memory),
         "fallback_reason": None,
     }
+
+
+def _build_review_teacher_provider() -> OpenAICompatibleAgentProvider | None:
+    """Build only the dedicated, local Teacher provider configuration."""
+
+    api_key = str(
+        settings.REVIEW_TEACHER_API_KEY or settings.DEEPSEEK_API_KEY or ""
+    ).strip()
+    if not api_key:
+        return None
+    return OpenAICompatibleAgentProvider(
+        OpenAICompatibleConfig(
+            api_key=api_key,
+            base_url=str(settings.REVIEW_TEACHER_API_BASE),
+            model=str(settings.REVIEW_TEACHER_MODEL),
+            wire_api=str(settings.REVIEW_TEACHER_API_WIRE),
+            timeout_seconds=float(settings.LLM_TIMEOUT_SECONDS),
+            include_media_base64=False,
+            require_vision=False,
+        )
+    )
 
 
 def _teacher_feedback_memory(policy: dict[str, Any] | None, feedback_memory: list[dict[str, Any]]) -> dict[str, Any]:
@@ -303,9 +285,10 @@ def _teacher_maro_report(
     *,
     student: dict[str, Any],
     job_id: str | None,
+    selected_posts: list[dict[str, Any]],
 ) -> dict[str, Any]:
     posts = []
-    for row in case["posts"]:
+    for row in selected_posts:
         post_id = str(row.get("post_id") or row.get("id") or "")
         posts.append(
             {
@@ -333,6 +316,141 @@ def _teacher_maro_report(
     }
 
 
+async def _run_teacher_maro_chain(
+    case: dict[str, Any],
+    *,
+    student: dict[str, Any],
+    job_id: str | None,
+    provider: Any,
+    maro_context: dict[str, Any],
+) -> dict[str, Any]:
+    """Run isolated task branches followed by one bounded Judge synthesis."""
+
+    selected_posts, selection = _teacher_selected_posts(case)
+    base_report = _teacher_maro_report(
+        case,
+        student=student,
+        job_id=job_id,
+        selected_posts=selected_posts,
+    )
+    case_id = job_id or _verdict_id("teacher", case)
+    post_ids = [str(row.get("post_id") or row.get("id") or "") for row in selected_posts]
+    tasks = _teacher_review_tasks(case)
+    branches: list[dict[str, Any]] = []
+    for task in tasks:
+        expert = "PostHarmAgent" if task == "interpersonal_harm" else "ClaimEvidenceAgent"
+        branch = await run_manual_agent_review(
+            report=base_report,
+            agent_names=[expert, "QuestionReflectionAgent"],
+            case_id=case_id,
+            selected_post_ids=post_ids,
+            human_triggered_by=case["created_by"],
+            provider=provider,
+            model=maro_context["model"],
+            provider_name=maro_context["provider_name"],
+            include_media_base64=False,
+            require_vision=False,
+            runtime_mode="complex",
+            policy=maro_context["policy"],
+            error_memory_summary=maro_context["error_memory_summary"],
+            enable_countermeasure=False,
+            review_task=task,
+            run_judge=False,
+        )
+        branches.append({"task": task, **branch})
+
+    branch_reports = [
+        item
+        for branch in branches
+        for item in branch.get("agent_reports") or []
+        if isinstance(item, dict)
+    ]
+    synthesis = await run_manual_agent_review(
+        report={**base_report, "agent_reviews": branch_reports},
+        agent_names=["HarmfulnessJudgeAgent", "CountermeasureAgent"],
+        case_id=case_id,
+        selected_post_ids=post_ids,
+        human_triggered_by=case["created_by"],
+        provider=provider,
+        model=maro_context["model"],
+        provider_name=maro_context["provider_name"],
+        include_media_base64=False,
+        require_vision=False,
+        runtime_mode="complex",
+        policy=maro_context["policy"],
+        error_memory_summary=maro_context["error_memory_summary"],
+        review_task="interpersonal_harm",
+        run_experts=False,
+    )
+    return {
+        **synthesis,
+        "agent_reports": [*branch_reports, *list(synthesis.get("agent_reports") or [])],
+        "task_branches": branches,
+        "review_tasks": tasks,
+        "audit_input_selection": selection,
+    }
+
+
+def _teacher_selected_posts(case: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    teacher = dict(case.get("options", {}).get("teacher") or {})
+    rows, selection = select_representative_posts(
+        case["posts"],
+        selected_post_ids=teacher.get("evidence_refs"),
+        limit=int(teacher.get("max_review_posts") or 6),
+    )
+    return [dict(row.get("row") or {}) for row in rows], selection
+
+
+def _teacher_review_tasks(case: dict[str, Any]) -> list[str]:
+    teacher = dict(case.get("options", {}).get("teacher") or {})
+    values = teacher.get("review_tasks") or ["interpersonal_harm"]
+    values = values if isinstance(values, list) else [values]
+    result = [
+        str(item).strip()
+        for item in values
+        if str(item).strip() in {"interpersonal_harm", "claim_deception"}
+    ]
+    return result or ["interpersonal_harm"]
+
+
+def _teacher_failure(
+    case: dict[str, Any],
+    *,
+    job_id: str | None,
+    reason: str,
+    task_state: str,
+) -> dict[str, Any]:
+    verdict_id = job_id or _verdict_id("teacher", case)
+    return {
+        "technology": "teacher",
+        "schema": "cogguard.review.teacher_audit.v1",
+        "status": "failed",
+        "verdict_type": "teacher_advisory",
+        "verdict_id": verdict_id,
+        "snapshot_id": case["snapshot_id"],
+        "event_id": case["event_id"],
+        "platforms": case["platforms"],
+        "model_version": ANALYSIS_TEACHER_MODEL_VERSION,
+        "execution_mode": "maro_llm",
+        "task_state": task_state,
+        "reason": reason,
+        "review_tasks": _teacher_review_tasks(case),
+        "non_claimable": True,
+        "canonical_allowed": False,
+        "review_required": True,
+        "countermeasure_report": {
+            "schema": "cogguard.review.countermeasure_report.v1",
+            "status": "not_generated",
+            "case_id": "",
+            "snapshot_id": case["snapshot_id"],
+            "teacher_audit_id": verdict_id,
+            "reason": "Countermeasure report was not generated because the Teacher audit failed.",
+            "quality_gate": False,
+        },
+        "capability_boundary": _teacher_capability_boundary("maro_llm"),
+    }
+
+
 def _teacher_maro_advisory(
     case: dict[str, Any],
     *,
@@ -347,7 +465,7 @@ def _teacher_maro_advisory(
     judge = next((item for item in reversed(completed) if item.get("agent_name") == "HarmfulnessJudgeAgent"), None)
     return {
         "technology": "teacher",
-        "schema": "cogguard.review.teacher_dag.v2",
+        "schema": "cogguard.review.teacher_audit.v1",
         "status": "completed",
         "verdict_type": "teacher_advisory",
         "verdict_id": job_id or _verdict_id("teacher", case),
@@ -362,6 +480,7 @@ def _teacher_maro_advisory(
         "reasoning_trace_saved": False,
         "review_required": True,
         "dag": _teacher_maro_dag(reports),
+        "audit_input_selection": maro_result.get("audit_input_selection") or {},
         "advisory": {
             "decision": "needs_human_review",
             "recommended_actions": {"human_review": 1},
@@ -369,11 +488,14 @@ def _teacher_maro_advisory(
             "external_followup_required": True,
         },
         "summary": {**dict(maro_result.get("summary") or {}), "completed_agent_reports": len(completed)},
+        "review_tasks": list(maro_result.get("review_tasks") or _teacher_review_tasks(case)),
         "signals": {
             "student_reference": {"verdict_id": student.get("verdict_id"), "label": student.get("label"), "score": student.get("score")},
             "maro": {"provider_name": provider_name, "model": model, "audit": maro_result.get("audit") or {}, "judge_report": judge},
         },
         "evidence": {"agent_reports": completed},
+        "countermeasure_gate": dict(maro_result.get("countermeasure_gate") or {}),
+        "countermeasure_report": dict(maro_result.get("countermeasure_report") or {}),
         "capability_boundary": _teacher_capability_boundary("maro_llm"),
     }
 
@@ -385,11 +507,13 @@ def _teacher_maro_chain_completed(maro_result: dict[str, Any]) -> bool:
         item.get("status") == "completed" and item.get("report_role") == "reflection_response"
         for item in reports
     )
-    return {
-        "PostHarmAgent",
-        "QuestionReflectionAgent",
-        "HarmfulnessJudgeAgent",
-    }.issubset(completed_names) and has_reflection_response
+    required = {"QuestionReflectionAgent", "HarmfulnessJudgeAgent"}
+    tasks = list(maro_result.get("review_tasks") or ["interpersonal_harm"])
+    if "interpersonal_harm" in tasks:
+        required.add("PostHarmAgent")
+    if "claim_deception" in tasks:
+        required.add("ClaimEvidenceAgent")
+    return required.issubset(completed_names) and has_reflection_response
 
 
 def _teacher_maro_dag(reports: list[dict[str, Any]]) -> dict[str, Any]:
@@ -421,30 +545,6 @@ def _teacher_maro_dag(reports: list[dict[str, Any]]) -> dict[str, Any]:
         if item.get("report_role") == "reflection_response"
     )
     return {"version": "maro-expert-question-reflection-judge", "nodes": nodes}
-
-
-def _teacher_dag_fallback(
-    case: dict[str, Any],
-    *,
-    student: dict[str, Any],
-    job_id: str | None,
-    fallback_reason: str,
-) -> dict[str, Any]:
-    return _mark_teacher_dag_fallback(
-        _load_review_teacher_dag().run_teacher_dag(case, student=student, job_id=job_id),
-        fallback_reason=fallback_reason,
-    )
-
-
-def _mark_teacher_dag_fallback(verdict: dict[str, Any], *, fallback_reason: str) -> dict[str, Any]:
-    return {
-        **verdict,
-        "execution_mode": "deterministic_dag_fallback",
-        "fallback_reason": fallback_reason,
-        "non_claimable": True,
-        "canonical_allowed": False,
-        "capability_boundary": _teacher_capability_boundary("deterministic_dag_fallback"),
-    }
 
 
 def _teacher_capability_boundary(execution_mode: str) -> dict[str, Any]:
@@ -510,6 +610,14 @@ async def mark_teacher_review_failed(
         "retryable": True,
         "review_required": True,
         "reason": "The independent review could not be completed. Retry the review or continue evidence collection.",
+        "countermeasure_report": {
+            "schema": "cogguard.review.countermeasure_report.v1",
+            "status": "not_generated",
+            "snapshot_id": normalized["snapshot_id"],
+            "teacher_audit_id": job_id,
+            "reason": "Countermeasure report was not generated because the Teacher audit failed.",
+            "quality_gate": False,
+        },
         "capability_boundary": _capability_boundary("teacher"),
     }
     TEACHER_JOB_CACHE[job_id] = verdict
@@ -538,6 +646,7 @@ async def _persist_teacher_review_row(
     status: str,
 ) -> bool:
     try:
+        persisted_verdict = _teacher_persistence_payload(verdict)
         async with async_session_factory() as db:
             result = await db.execute(
                 select(ReviewVerdictVersion).where(ReviewVerdictVersion.verdict_id == job_id)
@@ -552,10 +661,12 @@ async def _persist_teacher_review_row(
                         version=1,
                         verdict_type="teacher_advisory",
                         status=status,
-                        verdict_json=_json_dumps(verdict),
+                        verdict_json=_json_dumps(persisted_verdict),
                         immutable_source=ANALYSIS_TEACHER_SOURCE,
                         canonical_source_id=None,
-                        provenance_json=_json_dumps(_teacher_provenance(case, verdict, status)),
+                        provenance_json=_json_dumps(
+                            _teacher_provenance(case, persisted_verdict, status)
+                        ),
                         approved_by=None,
                         approved_at=None,
                         approval_notes=None,
@@ -567,18 +678,35 @@ async def _persist_teacher_review_row(
                 row.snapshot_id = case["snapshot_id"]
                 row.verdict_type = "teacher_advisory"
                 row.status = status
-                row.verdict_json = _json_dumps(verdict)
+                row.verdict_json = _json_dumps(persisted_verdict)
                 row.immutable_source = ANALYSIS_TEACHER_SOURCE
-                row.provenance_json = _json_dumps(_teacher_provenance(case, verdict, status))
+                row.provenance_json = _json_dumps(
+                    _teacher_provenance(case, persisted_verdict, status)
+                )
                 row.canonical_source_id = None
                 row.approval_notes = None
                 row.created_by = int(case.get("created_by") or 0)
-            from app.services.review_case_orchestrator import record_teacher_advisory
+            from app.services.review_case_orchestrator import (
+                record_countermeasure_report_available,
+                record_teacher_advisory,
+                record_teacher_review_failure,
+            )
 
             if status == "completed":
                 await record_teacher_advisory(
                     snapshot_id=case["snapshot_id"],
-                    verdict=verdict,
+                    verdict=persisted_verdict,
+                    db=db,
+                )
+                await record_countermeasure_report_available(
+                    snapshot_id=case["snapshot_id"],
+                    verdict=persisted_verdict,
+                    db=db,
+                )
+            elif status == "failed":
+                await record_teacher_review_failure(
+                    snapshot_id=case["snapshot_id"],
+                    verdict=persisted_verdict,
                     db=db,
                 )
             await db.commit()
@@ -592,6 +720,364 @@ async def _persist_teacher_review_row(
             "persistence_error": f"{type(exc).__name__}: {exc}",
         }
         return False
+
+
+def _teacher_persistence_payload(verdict: dict[str, Any]) -> dict[str, Any]:
+    """Keep the persisted audit bounded to analyst-facing, traceable evidence.
+
+    A live MARO run contains provider payloads and intermediate material that
+    are too large for a durable verdict and outside the product contract. This
+    projection intentionally keeps only the information required by the audit
+    view, governance readout, and Countermeasure report.
+    """
+
+    evidence = verdict.get("evidence") if isinstance(verdict.get("evidence"), dict) else {}
+    reports = evidence.get("agent_reports") if isinstance(evidence.get("agent_reports"), list) else []
+    payload = {
+        "technology": str(verdict.get("technology") or "teacher"),
+        "schema": str(verdict.get("schema") or "cogguard.review.teacher_audit.v1"),
+        "status": str(verdict.get("status") or "failed"),
+        "verdict_type": str(verdict.get("verdict_type") or "teacher_advisory"),
+        "verdict_id": str(verdict.get("verdict_id") or verdict.get("job_id") or ""),
+        "snapshot_id": str(verdict.get("snapshot_id") or ""),
+        "event_id": str(verdict.get("event_id") or ""),
+        "platforms": _bounded_text_list(verdict.get("platforms"), limit=8, text_limit=64),
+        "model_version": _bounded_text_value(verdict.get("model_version"), 128),
+        "execution_mode": _bounded_text_value(verdict.get("execution_mode"), 64),
+        "task_state": _bounded_text_value(verdict.get("task_state"), 128),
+        "reason": _bounded_text_value(verdict.get("reason"), 800),
+        "fallback_reason": _bounded_text_value(verdict.get("fallback_reason"), 256),
+        "non_claimable": bool(verdict.get("non_claimable", True)),
+        "canonical_allowed": False,
+        "review_required": bool(verdict.get("review_required", True)),
+        "reasoning_trace_saved": False,
+        "review_tasks": _bounded_text_list(verdict.get("review_tasks"), limit=2, text_limit=64),
+        "dag": _bounded_dag(verdict.get("dag")),
+        "audit_input_selection": _bounded_audit_selection(verdict.get("audit_input_selection")),
+        "advisory": _bounded_advisory(verdict.get("advisory")),
+        "summary": _bounded_summary(verdict.get("summary")),
+        "signals": _bounded_teacher_signals(verdict.get("signals")),
+        "evidence": {
+            "agent_reports": [
+                _bounded_agent_report(report)
+                for report in reports
+                if isinstance(report, dict)
+            ][:8]
+        },
+        "countermeasure_gate": _bounded_countermeasure_gate(verdict.get("countermeasure_gate")),
+        "countermeasure_report": _bounded_countermeasure_report(
+            verdict.get("countermeasure_report")
+        ),
+        "capability_boundary": _bounded_capability_boundary(
+            verdict.get("capability_boundary")
+        ),
+    }
+    # MySQL TEXT accepts at most 65,535 bytes. The normal bounded projection is
+    # substantially smaller; this final guard also handles provider anomalies.
+    if len(_json_dumps(payload).encode("utf-8")) > 56_000:
+        for report in payload["evidence"]["agent_reports"]:
+            report["report_text"] = _bounded_text_value(report.get("report_text"), 600)
+            report["system_audit_sidecar"] = _minimal_sidecar(
+                report.get("system_audit_sidecar")
+            )
+        payload["countermeasure_report"] = _minimal_countermeasure_report(
+            payload["countermeasure_report"]
+        )
+    return payload
+
+
+def _bounded_agent_report(report: dict[str, Any]) -> dict[str, Any]:
+    analysis = report.get("analysis_report") if isinstance(report.get("analysis_report"), dict) else {}
+    sidecar = report.get("system_audit_sidecar")
+    if not isinstance(sidecar, dict):
+        sidecar = report.get("structured_sidecar") if isinstance(report.get("structured_sidecar"), dict) else {}
+    return {
+        "agent_name": _bounded_text_value(report.get("agent_name"), 128),
+        "report_role": _bounded_text_value(report.get("report_role"), 64),
+        "status": _bounded_text_value(report.get("status"), 32),
+        "model": _bounded_text_value(report.get("model"), 128),
+        "report_text": _bounded_text_value(
+            analysis.get("text") or report.get("report_text") or report.get("error"),
+            1_600,
+        ),
+        "system_audit_sidecar": _bounded_sidecar(sidecar),
+    }
+
+
+def _bounded_sidecar(sidecar: dict[str, Any]) -> dict[str, Any]:
+    source_rows: list[dict[str, Any]] = []
+    for key in ("source_refs", "evidence_refs", "retrieval_results", "sources"):
+        values = sidecar.get(key)
+        if not isinstance(values, list):
+            continue
+        for value in values:
+            if isinstance(value, dict):
+                source_rows.append(_bounded_source_ref(value))
+    return {
+        "retrieval_queries": _bounded_queries(
+            sidecar.get("retrieval_queries") or sidecar.get("queries")
+        ),
+        "source_refs": _dedupe_source_refs(source_rows)[:8],
+        "rationale_capsule": _bounded_rationale_capsule(
+            sidecar.get("rationale_capsule") or sidecar.get("rationale")
+        ),
+        "governance_report": _bounded_governance_report(
+            sidecar.get("governance_report")
+        ),
+    }
+
+
+def _bounded_source_ref(value: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "doc_id": _bounded_text_value(
+            value.get("doc_id") or value.get("source_id") or value.get("id"), 256
+        ),
+        "source": _bounded_text_value(value.get("source") or value.get("source_origin"), 256),
+        "title": _bounded_text_value(value.get("title") or value.get("name"), 512),
+        "url": _bounded_text_value(value.get("url") or value.get("source_uri"), 2_048),
+        "quoted_span": _bounded_text_value(
+            value.get("quoted_span") or value.get("quote") or value.get("excerpt") or value.get("text"),
+            1_000,
+        ),
+        "relation": _bounded_text_value(value.get("relation"), 64),
+        "retrieval_status": _bounded_text_value(
+            value.get("retrieval_status") or value.get("status"), 64
+        ),
+    }
+
+
+def _dedupe_source_refs(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for value in values:
+        key = value.get("doc_id") or value.get("url") or value.get("title")
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        result.append(value)
+    return result
+
+
+def _bounded_queries(values: Any) -> list[str]:
+    items = values if isinstance(values, list) else [values] if values else []
+    return _bounded_text_list(
+        [item.get("query") if isinstance(item, dict) else item for item in items],
+        limit=4,
+        text_limit=300,
+    )
+
+
+def _bounded_rationale_capsule(value: Any) -> dict[str, Any]:
+    capsule = value if isinstance(value, dict) else {}
+    return {
+        "capsule_text": _bounded_text_value(
+            capsule.get("capsule_text") or capsule.get("short_rationale") or capsule.get("text"),
+            1_200,
+        ),
+        "input_spans": _bounded_text_list(
+            capsule.get("input_spans") or capsule.get("spans"), limit=12, text_limit=300
+        ),
+        "evidence_refs": _bounded_text_list(capsule.get("evidence_refs"), limit=20, text_limit=256),
+        "policy_refs": _bounded_text_list(capsule.get("policy_refs"), limit=20, text_limit=256),
+        "capsule_quality_gate": bool(
+            capsule.get("capsule_quality_gate") or capsule.get("quality_gate")
+        ),
+        "citation_coverage": _bounded_probability(capsule.get("citation_coverage")),
+    }
+
+
+def _bounded_governance_report(value: Any) -> dict[str, Any]:
+    report = value if isinstance(value, dict) else {}
+    references = report.get("platform_reference_refs") or report.get("references") or []
+    return {
+        "governance_category_id": _bounded_text_value(report.get("governance_category_id"), 128),
+        "governance_category": _bounded_text_value(report.get("governance_category"), 256),
+        "recommended_actions": _bounded_text_list(report.get("recommended_actions"), limit=8, text_limit=512),
+        "human_confirmation_items": _bounded_text_list(
+            report.get("human_confirmation_items"), limit=8, text_limit=512
+        ),
+        "platform_reference_refs": [
+            {
+                "ref_id": _bounded_text_value(item.get("ref_id") or item.get("reference_id"), 256),
+                "platform": _bounded_text_value(item.get("platform"), 128),
+                "title": _bounded_text_value(item.get("title"), 512),
+                "url": _bounded_text_value(item.get("url"), 2_048),
+                "reference_type": _bounded_text_value(item.get("reference_type"), 128),
+                "governance_use": _bounded_text_value(item.get("governance_use"), 512),
+            }
+            for item in references
+            if isinstance(item, dict)
+        ][:5],
+    }
+
+
+def _bounded_audit_selection(value: Any) -> dict[str, Any]:
+    selection = value if isinstance(value, dict) else {}
+    items = selection.get("items") if isinstance(selection.get("items"), list) else []
+    return {
+        "source": _bounded_text_value(selection.get("source"), 64),
+        "selection_criteria": _bounded_text_list(
+            selection.get("selection_criteria"), limit=6, text_limit=64
+        ),
+        "items": [
+            {
+                "post_id": _bounded_text_value(item.get("post_id"), 256),
+                "platform": _bounded_text_value(item.get("platform"), 64),
+                "author_name": _bounded_text_value(item.get("author_name"), 128),
+                "excerpt": _bounded_text_value(item.get("excerpt"), 600),
+                "engagement": {
+                    "reposts": _bounded_nonnegative_int((item.get("engagement") or {}).get("reposts")),
+                    "likes": _bounded_nonnegative_int((item.get("engagement") or {}).get("likes")),
+                    "comments": _bounded_nonnegative_int((item.get("engagement") or {}).get("comments")),
+                },
+            }
+            for item in items
+            if isinstance(item, dict)
+        ][:20],
+    }
+
+
+def _bounded_dag(value: Any) -> dict[str, Any]:
+    dag = value if isinstance(value, dict) else {}
+    nodes = dag.get("nodes") if isinstance(dag.get("nodes"), list) else []
+    return {
+        "version": _bounded_text_value(dag.get("version"), 128),
+        "nodes": [
+            {
+                "node": _bounded_text_value(node.get("node"), 128),
+                "status": _bounded_text_value(node.get("status"), 32),
+                "summary": _bounded_text_value(node.get("summary"), 400),
+            }
+            for node in nodes
+            if isinstance(node, dict)
+        ][:12],
+    }
+
+
+def _bounded_advisory(value: Any) -> dict[str, Any]:
+    advisory = value if isinstance(value, dict) else {}
+    actions = advisory.get("recommended_actions")
+    return {
+        "decision": _bounded_text_value(advisory.get("decision"), 64),
+        "recommended_actions": actions if isinstance(actions, dict) else {},
+        "avg_agent_confidence": _bounded_probability(advisory.get("avg_agent_confidence")),
+        "external_followup_required": bool(advisory.get("external_followup_required")),
+    }
+
+
+def _bounded_summary(value: Any) -> dict[str, Any]:
+    summary = value if isinstance(value, dict) else {}
+    return {
+        "completed": _bounded_nonnegative_int(summary.get("completed")),
+        "failed": _bounded_nonnegative_int(summary.get("failed")),
+        "completed_agent_reports": _bounded_nonnegative_int(
+            summary.get("completed_agent_reports")
+        ),
+    }
+
+
+def _bounded_teacher_signals(value: Any) -> dict[str, Any]:
+    signals = value if isinstance(value, dict) else {}
+    maro = signals.get("maro") if isinstance(signals.get("maro"), dict) else {}
+    student = signals.get("student_reference") if isinstance(signals.get("student_reference"), dict) else {}
+    return {
+        "student_reference": {
+            "verdict_id": _bounded_text_value(student.get("verdict_id"), 128),
+            "label": _bounded_text_value(student.get("label"), 64),
+        },
+        "maro": {
+            "provider_name": _bounded_text_value(maro.get("provider_name"), 64),
+            "model": _bounded_text_value(maro.get("model"), 128),
+        },
+    }
+
+
+def _bounded_countermeasure_gate(value: Any) -> dict[str, Any]:
+    gate = value if isinstance(value, dict) else {}
+    return {
+        "allowed": bool(gate.get("allowed")),
+        "reasons": _bounded_text_list(gate.get("reasons"), limit=12, text_limit=256),
+    }
+
+
+def _bounded_countermeasure_report(value: Any) -> dict[str, Any]:
+    report = value if isinstance(value, dict) else {}
+    return {
+        "schema": _bounded_text_value(report.get("schema"), 128),
+        "status": _bounded_text_value(report.get("status"), 64),
+        "case_id": _bounded_text_value(report.get("case_id"), 128),
+        "snapshot_id": _bounded_text_value(report.get("snapshot_id"), 128),
+        "teacher_audit_id": _bounded_text_value(report.get("teacher_audit_id"), 128),
+        "reason": _bounded_text_value(report.get("reason"), 800),
+        "risk_summary": _bounded_text_value(report.get("risk_summary"), 1_600),
+        "evidence_refs": _bounded_text_list(report.get("evidence_refs"), limit=20, text_limit=256),
+        "policy_refs": _bounded_text_list(report.get("policy_refs"), limit=20, text_limit=256),
+        "recommended_actions": _bounded_text_list(
+            report.get("recommended_actions"), limit=8, text_limit=512
+        ),
+        "response_draft": _bounded_text_value(report.get("response_draft"), 1_600),
+        "limitations": _bounded_text_list(report.get("limitations"), limit=8, text_limit=512),
+        "quality_gate": bool(report.get("quality_gate")),
+    }
+
+
+def _minimal_sidecar(value: Any) -> dict[str, Any]:
+    sidecar = value if isinstance(value, dict) else {}
+    return {
+        "rationale_capsule": _bounded_rationale_capsule(sidecar.get("rationale_capsule")),
+        "governance_report": _bounded_governance_report(sidecar.get("governance_report")),
+    }
+
+
+def _minimal_countermeasure_report(value: Any) -> dict[str, Any]:
+    report = _bounded_countermeasure_report(value)
+    return {
+        **report,
+        "risk_summary": _bounded_text_value(report.get("risk_summary"), 600),
+        "response_draft": _bounded_text_value(report.get("response_draft"), 600),
+        "evidence_refs": _bounded_text_list(report.get("evidence_refs"), limit=6, text_limit=128),
+        "policy_refs": _bounded_text_list(report.get("policy_refs"), limit=6, text_limit=128),
+    }
+
+
+def _bounded_capability_boundary(value: Any) -> dict[str, Any]:
+    boundary = value if isinstance(value, dict) else {}
+    return {
+        "execution_mode": _bounded_text_value(boundary.get("execution_mode"), 64),
+        "non_claimable": bool(boundary.get("non_claimable", True)),
+        "analyst_approval_required": bool(boundary.get("analyst_approval_required", True)),
+        "detector_outputs_unchanged": bool(boundary.get("detector_outputs_unchanged", True)),
+    }
+
+
+def _bounded_text_value(value: Any, limit: int) -> str:
+    return str(value or "").strip()[:limit]
+
+
+def _bounded_text_list(value: Any, *, limit: int, text_limit: int) -> list[str]:
+    values = value if isinstance(value, list) else [value] if value else []
+    result: list[str] = []
+    for item in values:
+        text = _bounded_text_value(item, text_limit)
+        if text and text not in result:
+            result.append(text)
+        if len(result) >= limit:
+            break
+    return result
+
+
+def _bounded_probability(value: Any) -> float | None:
+    try:
+        return max(0.0, min(1.0, float(value))) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _bounded_nonnegative_int(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
 
 
 def _normalize_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -1011,6 +1497,12 @@ def _quality_status(quality_report: dict[str, Any]) -> str:
 
 def _verdict_id(prefix: str, case: dict[str, Any]) -> str:
     return f"{prefix}_{_case_digest(case)[:24]}"
+
+
+def _teacher_job_id(case: dict[str, Any]) -> str:
+    """Return a new audit identifier while retaining snapshot traceability."""
+
+    return f"teacher_{_case_digest(case)[:16]}_{uuid4().hex[:12]}"
 
 
 def _run_id(case: dict[str, Any], job_id: str) -> str:

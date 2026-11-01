@@ -4,8 +4,33 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
+## 2026-08-17 账号画像主从研判工作台
+
+- [x] `/accounts` 已由全宽表格和详情抽屉收敛为账号列表与当前账号详情的主从工作台；
+  事件、平台和账号选择可通过查询参数恢复，切换范围时会清理过期详情响应。
+- [x] 当前账号详情展示简要研判、近期发言和按后端原始稳定顺序呈现的“相似账号”；
+  相似账号始终以当前账号平台下钻，并明确不表示关注、好友或转发关系。
+- [x] 账号检测完成后，页面显示本次检测产生的判别和概率，不展示内部模型、运行时或
+  支持图术语。无真实相似记录时保持明确空态，不生成替代关系。
+- [x] 账号工作台、复核审计和全量前端契约测试通过（`165 passed`），`vue-tsc -b`
+  通过；Vite 已完成源码编译。
+- [ ] 静态交付预算校验仍因全局 `ant-ui` 包 `1,148,848 bytes` 超过 `1,000,000`
+  bytes 阈值失败。该问题不由账号页引入，须作为独立交付性能任务处理，不能以放宽
+  阈值替代优化。
+
 ## 2026-08-17 协同与传播前后端闭环修复
 
+- [x] 将 `/risk/semantic-evidence` 收束为一个联动语义证据工作区：关键词、情感、
+  立场、主题、命名实体、时间变化和可核验内容使用同一事件范围与筛选状态；四个
+  历史语义 URL 保留查询参数并重定向到该工作区。可核验内容仅表示可定位到快照证据
+  引用和可选原始链接，不表示事实已经证实。
+- [x] Dashboard 展示本案完成审计侧车中持久化的治理参考、建议动作和人工确认项；
+`/risk` 概览不加载审计或 semantic artifact，五个语义子页按路由按需加载；不得从当前
+治理配置回填历史审计。
+- [x] 语义工作区首屏改用服务端 compact Semantic Workspace Projection：新运行的
+  read model 保存有界关系索引和初始 40 条可核验内容，不保存 `layers`；筛选在服务端
+  重投影后返回同一页联动聚合与分页内容。完整 artifact 端点和旧视图端点保留给既有
+  内部消费者，页面投影仍在返回前执行相同快照一致性检查与版本化缓存。
 - [x] 协同页保留现有数据集、图谱和历史结果接口，并以请求代次隔离快速切换；
   数据集详情、历史结果和图谱错误分别显示可重试状态。
 - [x] 传播页首屏只读取观察到的传播路径；趋势预测、时间线、预警和主张回应图谱
@@ -637,3 +662,20 @@
   telemetry before reporting performance.
 - [ ] Use any future Teacher Silver output for Student/LRKD only after a
   disjoint-source quality gate and a separately registered distillation study.
+
+## 2026-08-17: Event Review runtime integration
+
+- [x] Persist the snapshot-bound Student Bundle and expose it through a
+  dedicated read endpoint plus explicit reassessment action.
+- [x] Make Teacher execution analyst-triggered, preserve failure states, and
+  prevent deterministic or keyword shadow verdicts from being presented as an
+  audit result.
+- [x] Expose only Teacher-used governance references and bounded rationale
+  capsules; keep full prompts, CoT, and Teacher probabilities out of product
+  projections and Student loss.
+- [x] Generate the Countermeasure Report only after Judge, traceability, and
+  governance quality gates; retain human confirmation as the only action path.
+- [x] Split audit and report reads away from `/risk` initial case loading.
+- [ ] Run authenticated browser and fake-provider end-to-end verification when
+  a local backend session is available. No live provider call is part of this
+  coding checkpoint.

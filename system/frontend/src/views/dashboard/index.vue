@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard-page">
-    <PageHeader title="数据大屏" description="跨平台事件态势、采集规模、风险与地理位置概览" />
+    <PageHeader title="数据看板" description="跨平台事件态势、采集规模、风险与地理位置概览" />
 
     <div class="toolbar">
       <div class="event-scope-control">
@@ -18,7 +18,7 @@
           @change="loadOverview"
         />
       </div>
-      <a-button :loading="loading" aria-label="刷新数据大屏" @click="loadOverview">
+      <a-button :loading="loading" aria-label="刷新数据看板" @click="loadOverview">
         <ReloadOutlined aria-hidden="true" />
         刷新
       </a-button>
@@ -27,7 +27,9 @@
         <ArrowRightOutlined aria-hidden="true" />
       </a-button>
       <span v-if="overview?.meta.generated_at" class="generated-at">
-        {{ formatTime(overview.meta.generated_at) }}
+        <ClockCircleOutlined aria-hidden="true" />
+        <span class="generated-at-label">数据更新时间</span>
+        <time :datetime="overview.meta.generated_at">{{ formatTime(overview.meta.generated_at) }}</time>
       </span>
     </div>
 
@@ -39,9 +41,77 @@
       :message="loadError"
     />
 
+    <section class="case-audit-strip" aria-labelledby="case-audit-title">
+      <div class="case-audit-heading">
+        <div>
+          <span class="case-audit-kicker">当前事件</span>
+          <h3 id="case-audit-title">本案审计与治理参考</h3>
+        </div>
+        <a-button size="small" :disabled="!auditCase" @click="enterReview">查看研判</a-button>
+      </div>
+      <a-skeleton v-if="auditLoading" active :paragraph="{ rows: 2 }" />
+      <a-alert
+        v-else-if="auditError"
+        type="warning"
+        show-icon
+        message="审计证据暂不可用"
+        :description="auditError"
+      />
+      <a-alert
+        v-else-if="!auditCase || !caseAudit || caseAudit.status === 'unavailable'"
+        type="info"
+        show-icon
+        message="当前事件未记录复核审计"
+        description="治理参考只在分析员申请并完成复核后，随该案件的审计记录展示。"
+      />
+      <div v-else class="case-audit-content">
+        <div class="case-audit-summary">
+          <div class="case-audit-case-name">{{ auditCase.title }}</div>
+          <div class="case-audit-meta">
+            <a-tag
+              class="case-audit-status"
+              :class="{ 'is-running': caseAudit.status !== 'completed' }"
+            >
+              {{ caseAudit.status === 'completed' ? '审计已完成' : '审计处理中' }}
+            </a-tag>
+            <span>{{ caseAudit.stages.length }} 个角色阶段</span>
+            <span>{{ caseAudit.sources.length }} 条可追溯来源</span>
+          </div>
+          <p v-if="caseAudit.rationale.available" class="case-audit-rationale">{{ caseAudit.rationale.text }}</p>
+          <p v-else class="case-audit-rationale is-empty">当前审计未记录短理由摘要。</p>
+        </div>
+        <div class="case-governance">
+          <div class="case-governance-heading">
+            <strong>{{ caseAudit.governance.available ? '本案适用治理参考' : '治理参考未记录' }}</strong>
+            <span v-if="caseAudit.governance.category">{{ caseAudit.governance.category }}</span>
+          </div>
+          <div v-if="caseAudit.governance.available" class="case-governance-body">
+            <div v-if="caseAudit.governance.recommended_actions.length" class="case-governance-actions">
+              <span v-for="action in caseAudit.governance.recommended_actions" :key="action">{{ action }}</span>
+            </div>
+            <div v-if="caseAudit.governance.references.length" class="case-governance-references">
+              <component
+                v-for="reference in caseAudit.governance.references.slice(0, 3)"
+                :key="reference.reference_id"
+                :is="reference.url ? 'a' : 'span'"
+                :href="reference.url || undefined"
+                :target="reference.url ? '_blank' : undefined"
+                :rel="reference.url ? 'noopener noreferrer' : undefined"
+                :class="{ 'is-static': !reference.url }"
+              >
+                {{ reference.title || reference.reference_id }}
+              </component>
+            </div>
+            <span v-else class="case-governance-empty">审计未记录外部治理参考条目。</span>
+          </div>
+          <p v-else class="case-governance-empty">当前审计未记录适用的治理参考。</p>
+        </div>
+      </div>
+    </section>
+
     <a-row :gutter="[16, 16]" class="main-grid">
-      <a-col :xs="24" :xl="16">
-        <a-card title="事件位置地图" size="small">
+      <a-col :xs="24" :xl="16" class="map-column">
+        <a-card class="map-card" title="事件位置地图" size="small">
           <div class="map-shell">
             <div
               ref="mapRef"
@@ -72,7 +142,13 @@
         </a-card>
       </a-col>
       <a-col :xs="24" :xl="8" class="side-column">
-        <a-card title="平台数据分布" :loading="loading" size="small">
+        <a-card class="platform-card" title="本次抓取全量数据" :loading="loading" size="small">
+          <div v-if="overview?.summary" class="collection-summary" aria-label="本次抓取全量统计">
+            <span>主帖 <strong>{{ formatCount(overview.summary.posts) }}</strong></span>
+            <span>评论 <strong>{{ formatCount(overview.summary.comments) }}</strong></span>
+            <span class="collection-summary-total">合计 <strong>{{ formatCount(overview.summary.collected_items) }}</strong> 条</span>
+          </div>
+          <p v-if="overview?.summary" class="collection-summary-note">包含当前事件本次抓取的全部原始主帖与评论。</p>
           <a-table
             :columns="platformColumns"
             :data-source="overview?.platforms || []"
@@ -86,7 +162,7 @@
             :image-style="{ height: '36px' }"
           />
         </a-card>
-        <a-card title="最早发帖样本" size="small">
+        <a-card class="recent-card" title="最早发帖样本" size="small">
           <a-list
             v-if="overview?.recent_posts.length"
             :data-source="overview.recent_posts"
@@ -161,7 +237,7 @@
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { ArrowRightOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { ArrowRightOutlined, ClockCircleOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import * as echarts from 'echarts/core'
 import { EffectScatterChart, HeatmapChart, ScatterChart } from 'echarts/charts'
 import { GeoComponent, TooltipComponent, VisualMapComponent } from 'echarts/components'
@@ -170,8 +246,8 @@ import type { ECharts } from 'echarts/core'
 import type { EChartsOption } from 'echarts'
 import PageHeader from '@/components/PageHeader.vue'
 import { getDashboardOverview, type DashboardOverview, type EventLocation } from '@/api/dashboard'
-import { searchReviewCases } from '@/api/reviewCases'
-import type { ReviewCaseSummary } from '@/types/reviewCase'
+import { getReviewAudit, searchReviewCases } from '@/api/reviewCases'
+import type { ReviewAudit, ReviewCaseSummary } from '@/types/reviewCase'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
 const WORLD_GEOJSON_URL = new URL('../../assets/world-countries.geojson', import.meta.url).href
@@ -195,11 +271,16 @@ const loadError = ref('')
 const mapState = ref<'loading' | 'ready' | 'error'>('loading')
 const mapError = ref('')
 const overview = ref<DashboardOverview | null>(null)
+const auditCase = ref<ReviewCaseSummary | null>(null)
+const caseAudit = ref<ReviewAudit | null>(null)
+const auditLoading = ref(false)
+const auditError = ref('')
 const mapRef = ref<HTMLDivElement | null>(null)
 const pageActive = ref(true)
 let chart: ECharts | null = null
 let worldMapPromise: Promise<void> | null = null
 let eventSearchTimer: number | undefined
+let auditRequestSequence = 0
 
 const eventOptions = computed(() => {
   const options = caseItems.value.map((item) => ({
@@ -307,6 +388,10 @@ function formatTime(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleString('zh-CN', { hour12: false })
+}
+
+function formatCount(value: number): string {
+  return Number(value || 0).toLocaleString('zh-CN')
 }
 
 function originLocationMeta(record: EventLocation) {
@@ -482,6 +567,7 @@ function retryMap() {
 }
 
 async function loadOverview() {
+  void loadCurrentCaseAudit()
   loading.value = true
   loadError.value = ''
   try {
@@ -496,6 +582,37 @@ async function loadOverview() {
   } finally {
     loading.value = false
     await renderMap()
+  }
+}
+
+async function loadCurrentCaseAudit() {
+  const requestedEventId = eventId.value.trim()
+  const requestSequence = ++auditRequestSequence
+  auditCase.value = null
+  caseAudit.value = null
+  auditError.value = ''
+  if (!requestedEventId) {
+    auditLoading.value = false
+    return
+  }
+  auditLoading.value = true
+  try {
+    const cases = await searchReviewCases({ query: requestedEventId, limit: 20 })
+    if (requestSequence !== auditRequestSequence || requestedEventId !== eventId.value.trim()) return
+    const matched = cases.data.items.find((item) => item.event_id === requestedEventId)
+    auditCase.value = matched || null
+    if (!matched) return
+    const audit = await getReviewAudit(matched.case_id)
+    if (requestSequence !== auditRequestSequence || requestedEventId !== eventId.value.trim()) return
+    caseAudit.value = audit.data
+  } catch {
+    if (requestSequence === auditRequestSequence && requestedEventId === eventId.value.trim()) {
+      auditError.value = '当前事件的持久化审计投影加载失败，请稍后刷新。'
+    }
+  } finally {
+    if (requestSequence === auditRequestSequence && requestedEventId === eventId.value.trim()) {
+      auditLoading.value = false
+    }
   }
 }
 
@@ -621,12 +738,179 @@ onBeforeUnmount(() => {
 }
 
 .generated-at {
-  color: #86909c;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin-left: auto;
+  padding: 4px 10px;
+  color: #64748b;
   font-size: 12px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  border: 1px solid #d9e2f2;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.generated-at :deep(.anticon) {
+  color: #64748b;
+}
+
+.generated-at-label {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.generated-at time {
+  color: #475569;
 }
 
 .status-alert {
   margin-bottom: 16px;
+}
+
+.case-audit-strip {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid #d9e2f2;
+  border-left: 4px solid #1677ff;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.case-audit-heading,
+.case-governance-heading,
+.case-audit-meta,
+.case-governance-actions,
+.case-governance-references {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.case-audit-heading {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.case-audit-kicker {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.case-audit-heading h3 {
+  margin: 2px 0 0;
+  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.case-audit-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+  gap: 18px;
+}
+
+.case-audit-summary,
+.case-governance {
+  min-width: 0;
+}
+
+.case-audit-case-name {
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.case-audit-meta {
+  margin-top: 7px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.case-audit-status {
+  margin-inline-end: 0;
+  border-color: #d6e4ff;
+  color: #0958d9;
+  background: #f0f5ff;
+}
+
+.case-audit-status.is-running {
+  border-color: #e5e7eb;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.case-audit-rationale,
+.case-governance-empty {
+  margin: 9px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.case-audit-rationale.is-empty,
+.case-governance-empty {
+  color: #64748b;
+}
+
+.case-governance {
+  padding-left: 16px;
+  border-left: 1px solid #e5e7eb;
+}
+
+.case-governance-heading {
+  justify-content: space-between;
+  color: #334155;
+  font-size: 13px;
+}
+
+.case-governance-heading span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.case-governance-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.case-governance-actions span {
+  padding: 2px 6px;
+  border: 1px solid #d6e4ff;
+  color: #0958d9;
+  background: #f0f5ff;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.case-governance-references a {
+  color: #1677ff;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.case-governance-references a:hover {
+  color: #0958d9;
+  text-decoration: underline;
+}
+
+.case-governance-references a:focus-visible {
+  outline: 3px solid #91caff;
+  outline-offset: 2px;
+}
+
+.case-governance-references .is-static {
+  color: #64748b;
+  cursor: default;
+  text-decoration: none;
 }
 
 .main-grid,
@@ -638,15 +922,78 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+}
+
+.collection-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.collection-summary strong {
+  color: #1f2937;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.collection-summary-total {
+  color: #334155;
+}
+
+.collection-summary-note {
+  margin: 0 0 10px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.map-column {
+  display: flex;
+  min-width: 0;
+}
+
+.map-card {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.map-card :deep(.ant-card-body) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.recent-card {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.recent-card :deep(.ant-card-body) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .map-shell {
   position: relative;
   display: flex;
+  flex: 1 1 auto;
   align-items: stretch;
   gap: 12px;
   padding: 12px;
-  min-height: 460px;
+  min-width: 0;
+  min-height: 540px;
   overflow: hidden;
   border-radius: 8px;
   background:
@@ -672,7 +1019,7 @@ onBeforeUnmount(() => {
 .map-canvas {
   flex: 1 1 auto;
   min-width: 0;
-  height: 460px;
+  height: 540px;
   width: 100%;
 }
 
@@ -760,7 +1107,31 @@ onBeforeUnmount(() => {
   font-size: 11px;
 }
 
-@media (max-width: 1280px) {
+@media (min-width: 1200px) {
+  .map-shell {
+    min-height: 620px;
+  }
+
+  .map-canvas {
+    height: auto;
+  }
+
+  .side-column {
+    min-height: 620px;
+  }
+
+  .platform-card {
+    flex: 0 0 auto;
+  }
+
+  .side-recent-list {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 1199px) {
   .map-shell {
     flex-direction: column;
   }
@@ -778,8 +1149,24 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 720px) {
+  .case-audit-content {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .case-governance {
+    padding-top: 12px;
+    padding-left: 0;
+    border-top: 1px solid #dcebdc;
+    border-left: 0;
+  }
+
   .event-scope-control {
     width: 100%;
+  }
+
+  .generated-at {
+    margin-left: 0;
   }
 
   .event-input {

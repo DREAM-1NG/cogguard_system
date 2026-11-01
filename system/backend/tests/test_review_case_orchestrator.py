@@ -6,14 +6,17 @@ from types import SimpleNamespace
 
 from app.core.analysis import TimeWindow, build_event_snapshot
 from app.models.review_case import CaseActivity, ReviewCase, ReviewCaseSnapshotRevision
+from app.services.review_case_repository import _teacher_task_is_active
 from app.services.review_case_orchestrator import (
     CaseRevisionRef,
     ReviewCaseOrchestrator,
     SqlAlchemyReviewCaseRepository,
     derive_analysis_windows,
     record_teacher_advisory,
-    teacher_routing_reasons,
+    record_countermeasure_report_available,
+    record_teacher_review_failure,
 )
+from app.services.review_case_analysis_projection import project_student_result
 
 
 def _dt(hour: int) -> datetime:
@@ -121,6 +124,15 @@ class FakeRepository:
         self.teacher_submissions.append(kwargs)
 
 
+def test_teacher_submission_is_active_only_with_an_unfinished_queued_task():
+    assert _teacher_task_is_active("draft", "celery_1") is True
+    assert _teacher_task_is_active("queued", "celery_1") is True
+    assert _teacher_task_is_active("running", "celery_1") is True
+    assert _teacher_task_is_active("completed", "celery_1") is False
+    assert _teacher_task_is_active("failed", "celery_1") is False
+    assert _teacher_task_is_active("draft", "") is False
+
+
 def test_analysis_windows_use_current_crawl_for_core_and_event_for_context():
     posts = [
         {"crawl_job_id": 7, "timestamp": _dt(8)},
@@ -139,7 +151,7 @@ def test_analysis_windows_use_current_crawl_for_core_and_event_for_context():
     assert context.end > _dt(10)
 
 
-def test_new_snapshot_runs_core_analysis_and_routes_uncertain_case_to_teacher():
+def test_new_snapshot_runs_core_analysis_without_automatic_teacher_submission():
     async def scenario():
         snapshot = _snapshot()
         registry = FakeRegistry(snapshot)
@@ -162,12 +174,12 @@ def test_new_snapshot_runs_core_analysis_and_routes_uncertain_case_to_teacher():
             "propagation_analysis",
             "student",
         ]
-        assert registry.created_runs[1]["requested_stages"] == ["teacher"]
-        assert outcome.teacher_requested is True
-        assert "student_abstained" in outcome.teacher_reasons
+        assert len(registry.created_runs) == 1
+        assert outcome.teacher_requested is False
+        assert outcome.teacher_reasons == ()
         assert repository.projections[0]["projection"].conclusion == "harmful"
         assert repository.projections[0]["projection"].action_required == "add_evidence"
-        assert repository.teacher_submissions[0]["teacher_verdict_id"] == "teacher_job_1"
+        assert repository.teacher_submissions == []
 
         repository.created_revision = False
         repeated = await orchestrator.analyze_snapshot(
@@ -176,25 +188,40 @@ def test_new_snapshot_runs_core_analysis_and_routes_uncertain_case_to_teacher():
             created_by=7,
         )
         assert repeated.created_revision is False
-        assert len(registry.created_runs) == 2
+        assert len(registry.created_runs) == 1
 
     asyncio.run(scenario())
 
 
-def test_teacher_policy_does_not_submit_for_sufficient_routine_finding():
-    reasons = teacher_routing_reasons(
+def test_student_only_projection_preserves_existing_core_business_summaries():
+    projection = project_student_result(
+        snapshot=_snapshot(),
         student={
-            "status": "ok",
+            "status": "completed",
             "label": "non_harmful",
             "risk_level": "low",
             "abstain": False,
-            "review_required": False,
         },
-        evidence_sufficiency="sufficient",
-        urgency="routine",
+        existing_business_summary={
+            "coordination": {
+                "narrative": "Existing coordination result.",
+                "key_communities": ["community_1"],
+                "key_accounts": ["publisher_1"],
+            },
+            "propagation": {
+                "narrative": "Existing propagation result.",
+                "trend": "rising",
+                "forecast_range": "10 to 20 accounts",
+                "likely_next_targets": ["account_2"],
+            },
+            "review_advisory": {"rationale": "Existing audit remains available."},
+        },
     )
 
-    assert reasons == []
+    assert projection.conclusion.value == "non_harmful"
+    assert projection.business_summary["coordination"]["narrative"] == "Existing coordination result."
+    assert projection.business_summary["propagation"]["trend"] == "rising"
+    assert projection.business_summary["review_advisory"]["rationale"] == "Existing audit remains available."
 
 
 def test_advisory_for_older_revision_does_not_replace_current_case_projection():
@@ -265,6 +292,133 @@ def test_advisory_for_older_revision_does_not_replace_current_case_projection():
         assert len(db.added) == 1
         assert db.added[0].snapshot_revision_id == "revision_1"
         assert db.added[0].action_required == "none"
+
+    asyncio.run(scenario())
+
+
+def test_teacher_failure_records_a_retryable_activity_without_replacing_case_conclusion():
+    class Result:
+        def __init__(self, value=None, *, first=None) -> None:
+            self.value = value
+            self.first_value = first
+
+        def scalar_one_or_none(self):
+            return self.value
+
+        def scalar_one(self):
+            return self.value
+
+        def first(self):
+            return self.first_value
+
+    class FakeSession:
+        def __init__(self, results) -> None:
+            self.results = list(results)
+            self.added = []
+
+        async def execute(self, _statement):
+            return self.results.pop(0)
+
+        def add(self, row) -> None:
+            self.added.append(row)
+
+        async def flush(self) -> None:
+            return None
+
+    async def scenario():
+        revision = SimpleNamespace(
+            case_id="case_1",
+            snapshot_revision_id="revision_1",
+            revision_number=1,
+            teacher_verdict_id=None,
+        )
+        case = SimpleNamespace(
+            case_id="case_1",
+            preliminary_conclusion="harmful",
+            action_required="confirm_decision",
+            business_summary_json='{"review_advisory":{"rationale":"current"}}',
+        )
+        db = FakeSession([Result(revision), Result(case), Result(first=None)])
+
+        recorded = await record_teacher_review_failure(
+            snapshot_id="snapshot_1",
+            verdict={
+                "verdict_id": "teacher_failure_1",
+                "reason": "Provider unavailable.",
+                "task_state": "dispatch_failed",
+            },
+            db=db,
+        )
+
+        assert recorded is True
+        assert revision.teacher_verdict_id == "teacher_failure_1"
+        assert case.action_required == "confirm_decision"
+        assert case.business_summary_json == '{"review_advisory":{"rationale":"current"}}'
+        assert len(db.added) == 1
+        assert db.added[0].activity_type == "teacher_review_failed"
+        assert db.added[0].action_required == "none"
+        assert db.added[0].source_ref == "teacher_failure_1"
+
+    asyncio.run(scenario())
+
+
+def test_countermeasure_activity_requires_a_quality_gated_persisted_draft():
+    class Result:
+        def __init__(self, value=None, *, first=None) -> None:
+            self.value = value
+            self.first_value = first
+
+        def scalar_one_or_none(self):
+            return self.value
+
+        def scalar_one(self):
+            return self.value
+
+        def first(self):
+            return self.first_value
+
+    class FakeSession:
+        def __init__(self, results) -> None:
+            self.results = list(results)
+            self.added = []
+
+        async def execute(self, _statement):
+            return self.results.pop(0)
+
+        def add(self, row) -> None:
+            self.added.append(row)
+
+        async def flush(self) -> None:
+            return None
+
+    async def scenario():
+        blocked = await record_countermeasure_report_available(
+            snapshot_id="snapshot_1",
+            verdict={"countermeasure_report": {"status": "not_generated", "quality_gate": False}},
+            db=FakeSession([]),
+        )
+        assert blocked is False
+
+        revision = SimpleNamespace(case_id="case_1", snapshot_revision_id="revision_1")
+        case = SimpleNamespace(case_id="case_1")
+        db = FakeSession([Result(revision), Result(case), Result(first=None)])
+        recorded = await record_countermeasure_report_available(
+            snapshot_id="snapshot_1",
+            verdict={
+                "verdict_id": "teacher_1",
+                "countermeasure_report": {
+                    "status": "available",
+                    "quality_gate": True,
+                    "evidence_refs": ["post:p1"],
+                },
+            },
+            db=db,
+        )
+
+        assert recorded is True
+        assert len(db.added) == 1
+        assert db.added[0].activity_type == "countermeasure_report_available"
+        assert db.added[0].evidence_refs_json == '["post:p1"]'
 
     asyncio.run(scenario())
 

@@ -143,6 +143,10 @@ class Settings(BaseSettings):
     ANALYSIS_RESULT_CACHE_MAX_ENTRIES: int = 16
     ANALYSIS_RESULT_CACHE_TTL_SECONDS: int = 604800
     ANALYSIS_RESULT_CACHE_NAMESPACE: str = "cogguard:analysis-result"
+    # A successful semantic artifact freshness check is safe to reuse briefly.
+    # The next request after expiry rebuilds the source snapshot and fails closed
+    # if the persisted artifact no longer matches it.
+    SEMANTIC_ARTIFACT_FRESHNESS_CACHE_TTL_SECONDS: int = 15
 
     # ----- LLM API (趋势预测用) -----
     LLM_API_KEY: str = ""
@@ -153,9 +157,15 @@ class Settings(BaseSettings):
     LLM_INCLUDE_MEDIA_BASE64: bool = False
     LLM_REQUIRE_VISION: bool = False
 
-    # Isolated MARO experiments use DeepSeek directly. Keep this separate from
-    # the product LLM provider so experiment credentials cannot alter runtime
-    # provider selection.
+    # The product Teacher has an isolated provider contract. It must not
+    # inherit an unrelated generic LLM gateway used by other capabilities.
+    REVIEW_TEACHER_API_KEY: str = ""
+    REVIEW_TEACHER_API_BASE: str = "https://api.deepseek.com/v1"
+    REVIEW_TEACHER_MODEL: str = "deepseek-chat"
+    REVIEW_TEACHER_API_WIRE: str = "chat_completions"
+
+    # Isolated MARO experiments use DeepSeek directly. This remains separate
+    # from the product Teacher provider contract above.
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
     DEEPSEEK_MODEL: str = "deepseek-chat"

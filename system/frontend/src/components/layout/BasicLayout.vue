@@ -71,7 +71,7 @@
         <div
           v-for="tab in openTabs"
           :key="tab.path"
-          :class="['tab-item', { active: tab.path === route.path }]"
+          :class="['tab-item', { active: isTabActive(tab.path) }]"
         >
           <router-link class="tab-link" :to="tab.path">{{ tab.label }}</router-link>
           <button
@@ -123,7 +123,7 @@ const collapsed = ref(false)
 const mobileNavigationOpen = ref(false)
 
 const menuItems = [
-  { path: '/dashboard', label: '数据大屏', icon: DashboardOutlined, desc: '系统首页的大屏总览，保留本地地图资产和平台分布可视化', disabled: false },
+  { path: '/dashboard', label: '数据看板', icon: DashboardOutlined, desc: '系统首页的看板总览，保留本地地图资产和平台分布可视化', disabled: false },
   { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集请求并管理多平台数据获取', disabled: false },
   { path: '/coordination', label: '协同发现', icon: ApartmentOutlined, desc: '发现协同行为并构建协同网络', disabled: false },
   { path: '/propagation', label: '传播监测', icon: ShareAltOutlined, desc: '查看传播路径、证据链和传播角色', disabled: false },
@@ -155,20 +155,27 @@ const userRoleLabel = computed(() => {
 const openTabs = ref<Array<{ path: string; label: string }>>([])
 
 function findLabel(path: string): string {
+  if (path.startsWith('/risk/')) return '事件研判'
   return visibleMenuItems.value.find((item) => item.path === path)?.label || '页面'
 }
 
 function addTab(path: string) {
-  if (!openTabs.value.find((tab) => tab.path === path)) {
-    openTabs.value.push({ path, label: findLabel(path) })
+  const tabPath = path.startsWith('/risk/') ? '/risk' : path
+  if (!openTabs.value.find((tab) => tab.path === tabPath)) {
+    openTabs.value.push({ path: tabPath, label: findLabel(path) })
   }
+}
+
+function isTabActive(path: string): boolean {
+  return path === route.path || (path === '/risk' && route.path.startsWith('/risk/'))
 }
 
 function closeTab(path: string) {
   const idx = openTabs.value.findIndex((tab) => tab.path === path)
   if (idx === -1) return
+  const closingActive = isTabActive(path)
   openTabs.value.splice(idx, 1)
-  if (path === route.path && openTabs.value.length > 0) {
+  if (closingActive && openTabs.value.length > 0) {
     const target = openTabs.value[Math.min(idx, openTabs.value.length - 1)]
     router.push(target.path)
   }

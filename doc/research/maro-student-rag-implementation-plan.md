@@ -148,3 +148,20 @@ gold-free hard-case manifest only. It deliberately does not run dataset
 training, DeepSeek/API calls, RAG quality experiments, Teacher cost/latency
 benchmarks, continuous pretraining, or multimodal consistency. Those require
 separate experiment protocols and independent result-to-claim review.
+
+## Product Runtime Integration (2026-08-17)
+
+The product implementation follows the documented boundary without asserting a
+research result. The Student Bundle persists once per Event Snapshot, with
+HateCoT LRKD used only for the approved interpersonal-harm artifact. The
+claim-deception axis stays `unconfigured` until its own training, calibration,
+and approval path is complete.
+
+An analyst request starts the MARO-compatible Teacher audit. The runtime keeps
+task branches isolated, projects bounded stages and short rationale capsules,
+and records provider or orchestration failure instead of producing a surrogate
+verdict. Teacher-used governance references are persisted with the audit; the
+UI must not replace them with today's policy catalog. The post-Judge
+Countermeasure Report is generated only when the same audit has a parseable
+conclusion, traceable input spans, and those references. It is not an action
+executor and is not Student probability supervision.

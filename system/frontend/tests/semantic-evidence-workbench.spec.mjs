@@ -72,7 +72,7 @@ test('formats non-zero semantic distribution segments without rounding them to z
   assert.equal(formatDistributionPercent(28, 52), '54')
 })
 
-test('builds a stable top-fifty keyword cloud with bounded logarithmic sizes', () => {
+test('builds a stable compact keyword cloud with bounded logarithmic sizes', () => {
   const { buildKeywordCloud } = loadModel()
   const records = Array.from({ length: 90 }, (_, index) => semanticRecord({
     id: `post-${index}`,
@@ -81,7 +81,7 @@ test('builds a stable top-fifty keyword cloud with bounded logarithmic sizes', (
 
   const cloud = buildKeywordCloud(records)
 
-  assert.equal(cloud.length, 50)
+  assert.equal(cloud.length, 32)
   assert.deepEqual(cloud[0], { term: '高频词', count: 20, fontSize: 40 })
   assert.equal(cloud.at(-1)?.fontSize, 12)
   assert.ok(cloud.every((item) => item.fontSize >= 12 && item.fontSize <= 40))
@@ -113,7 +113,7 @@ test('places keyword cloud terms deterministically with mixed angles and no over
   assert.ok(Math.max(...placements.map((item) => item.bottom)) - Math.min(...placements.map((item) => item.top)) >= 130)
 })
 
-test('keeps fifty realistic Chinese keywords inside the cloud without overlap', () => {
+test('keeps the compact Chinese keyword summary inside the cloud without overlap', () => {
   const { layoutKeywordCloud } = loadModel()
   const terms = [
     '繁荣昌盛', '中国特色社会主义', '特朗普访华', '国际关系', '中美关系',
@@ -127,13 +127,14 @@ test('keeps fifty realistic Chinese keywords inside the cloud without overlap', 
     '议题设置', '影响范围', '评论观点', '主帖内容', '传播节点',
     '网络关系', '数据来源', '分析结果', '政策建议', '平台动态',
   ]
-  const items = terms.map((term, index) => ({
+  const compactTerms = terms.slice(0, 32)
+  const items = compactTerms.map((term, index) => ({
     term,
-    count: 50 - index,
-    fontSize: 12 + Math.round(((50 - index) / 50) * 28),
+    count: compactTerms.length - index,
+    fontSize: 12 + Math.round(((compactTerms.length - index) / compactTerms.length) * 28),
   }))
 
-  const placements = layoutKeywordCloud(items, 680, 520)
+  const placements = layoutKeywordCloud(items, 680, 400)
 
   assert.equal(placements.length, items.length)
   assert.ok(placements.every((item, index) => placements.slice(index + 1).every((other) => (

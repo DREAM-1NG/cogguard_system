@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -12,8 +13,10 @@ from app.core.account_labeling import account_scope_key
 from app.core.security import get_current_user
 from app.core.bot_detection import run_botrhg_detection
 from app.main import app
+from app.models.account_labeling import AccountPredictionAudit
 from app.services import account_service
 from app.services import bot_detection_service
+from app.services.account_model_monitoring_service import account_prediction_input_fingerprint
 from app.utils.exceptions import AppException
 
 
@@ -89,6 +92,23 @@ def _post(account_id, timestamp, content, *, author_name=None, profile=None, lik
         "comments_count": 0,
         "hashtags": ["topic"],
         "url": "https://example.com/shared",
+    }
+
+
+def _comment(account_id, timestamp, content, *, comment_id="comment-1", post_id="parent-post"):
+    return {
+        "event_id": "event-1",
+        "platform": "weibo",
+        "comment_id": comment_id,
+        "post_id": post_id,
+        "author_id": account_id,
+        "author_name": account_id,
+        "timestamp": timestamp,
+        "content": content,
+        "likes": 0,
+        "account_activity_type": "comment",
+        "account_activity_id": f"comment:{comment_id}",
+        "parent_post_id": post_id,
     }
 
 
@@ -177,6 +197,72 @@ def test_botrhg_service_filters_posts_by_event_and_platform(monkeypatch):
     assert result["summary"]["event_id"] == "event-1"
     assert result["summary"]["platform"] == "weibo"
     assert result["summary"]["account_count"] == 1
+
+
+def test_botrhg_service_detects_comment_only_event_participants(monkeypatch):
+    activities = [
+        {
+            **_post("publisher", "2026-05-21T00:00:00+00:00", "发布内容"),
+            "account_activity_type": "post",
+            "account_activity_id": "post:publisher-2026-05-21T00:00:00+00:00",
+        },
+        _comment("commenter", "2026-05-21T00:01:00+00:00", "评论内容"),
+    ]
+    model = SimpleNamespace(model_version="governed-model", artifact_hash="a" * 64, pointer_revision=1)
+
+    async def active_model():
+        return available_active_account_model_resolution(model)
+
+    async def load_activities(_mongo_db, *, event_id, platform):
+        assert (event_id, platform) == ("event-1", "weibo")
+        return activities
+
+    class AuditSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def commit(self):
+            return None
+
+    observed = {}
+
+    def detect(rows, _model, *, allow_legacy_fallback):
+        observed["activity_ids"] = [row["account_activity_id"] for row in rows]
+        return {
+            "method": "BotRHG",
+            "accounts": [
+                {"account_id": "publisher", "final_prediction": "human"},
+                {"account_id": "commenter", "final_prediction": "human"},
+            ],
+            "summary": {"account_count": 2, "bot_count": 0},
+        }
+
+    async def record_audits(*_args, **_kwargs):
+        return 2
+
+    monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: FakeMongoDB())
+    monkeypatch.setattr(bot_detection_service, "get_active_account_model_resolution", active_model)
+    monkeypatch.setattr(bot_detection_service, "load_event_account_activities", load_activities)
+    monkeypatch.setattr(bot_detection_service, "run_trained_botrhg_detection", detect)
+    monkeypatch.setattr(bot_detection_service, "async_session_factory", AuditSession)
+    monkeypatch.setattr(bot_detection_service, "record_account_prediction_audits", record_audits)
+
+    result = asyncio.run(bot_detection_service.detect_social_bots(event_id="event-1", platform="weibo"))
+
+    assert observed["activity_ids"] == ["post:publisher-2026-05-21T00:00:00+00:00", "comment:comment-1"]
+    assert result["summary"]["account_count"] == 2
+    assert result["summary"]["activity_count"] == 2
+    assert result["summary"]["source_counts"] == {"posts": 1, "comments": 1}
+
+
+def test_prediction_fingerprint_distinguishes_comments_on_the_same_parent_post():
+    first = _comment("commenter", "2026-05-21T00:01:00+00:00", "相同文本", comment_id="comment-1")
+    second = _comment("commenter", "2026-05-21T00:01:00+00:00", "相同文本", comment_id="comment-2")
+
+    assert account_prediction_input_fingerprint([first]) != account_prediction_input_fingerprint([second])
 
 
 def test_botrhg_service_partitions_multi_platform_inference(monkeypatch):
@@ -587,6 +673,39 @@ def test_account_profiles_project_trained_detector_conclusions_without_rule_scor
     assert all("automation_score" not in row for row in rows)
 
 
+def test_account_profile_page_returns_bounded_rows_and_complete_scope_summary(
+    monkeypatch,
+    authenticated_user_override,
+):
+    captured = {}
+
+    async def profile_page(**kwargs):
+        captured.update(kwargs)
+        return {
+            "items": [{"account_id": "u2", "platform": "weibo"}],
+            "total": 13992,
+            "attention": 9672,
+            "pending": 0,
+            "platforms": ["weibo", "xhs", "douyin"],
+            "page": 2,
+            "page_size": 200,
+        }
+
+    monkeypatch.setattr(account_service, "get_account_profile_page", profile_page)
+
+    async def request():
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get("/api/v1/accounts/profiles/page?event_id=event-1&page=2&page_size=200")
+
+    response = asyncio.run(request())
+
+    assert response.status_code == 200
+    assert response.json()["data"]["total"] == 13992
+    assert response.json()["data"]["items"] == [{"account_id": "u2", "platform": "weibo"}]
+    assert captured == {"platform": None, "event_id": "event-1", "page": 2, "page_size": 200}
+
+
 def test_account_profiles_reuse_versioned_detector_projection(monkeypatch):
     posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
     raw_posts = FakeCollection(posts)
@@ -720,3 +839,51 @@ def test_account_profiles_do_not_use_legacy_checkpoint_when_bootstrap_is_disable
     )
 
     assert asyncio.run(account_service._build_model_assessments([_post("u1", "2026", "text")], None)) == {}
+
+
+def test_stored_assessments_reject_legacy_audits_without_similarity_evidence(monkeypatch):
+    post = _post("u1", "2026-05-21T00:00:00+00:00", "hello")
+    model = SimpleNamespace(model_version="governed-model", artifact_hash="a" * 64, pointer_revision=3)
+    legacy_audit = AccountPredictionAudit(
+        audit_id="legacy-audit",
+        case_id="legacy-case",
+        account_id="u1",
+        platform="weibo",
+        family="chinese_account_detection",
+        model_version=model.model_version,
+        pointer_revision=model.pointer_revision,
+        input_fingerprint=account_prediction_input_fingerprint([post]),
+        prediction_json=json.dumps(
+            {
+                "prediction": "human",
+                "final_probability": 0.11,
+                "routed": False,
+                # This represents the persisted production shape before the
+                # account workbench needed evidence for similar-account display.
+            }
+        ),
+        created_at=datetime(2026, 8, 9, tzinfo=None),
+    )
+
+    class Result:
+        def scalars(self):
+            return self
+
+        def all(self):
+            return [legacy_audit]
+
+    class Session:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def execute(self, _statement):
+            return Result()
+
+    monkeypatch.setattr(account_service, "async_session_factory", lambda: Session())
+
+    assessments = asyncio.run(account_service._stored_model_assessments([post], model))
+
+    assert assessments == {}

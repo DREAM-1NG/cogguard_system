@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+from collections import OrderedDict
 from datetime import datetime, timezone
 from typing import Any
 
@@ -19,35 +20,110 @@ from app.config import settings
 from app.db.mongodb import get_mongo_db
 from app.db.mysql import async_session_factory
 from app.models.account_labeling import AccountPredictionAudit
-from app.services.event_data import load_event_posts
+from app.services.event_data import event_data_fingerprint, load_event_account_activities
 from app.services.account_model_runtime_service import get_active_account_model
-from app.services.account_model_monitoring_service import account_prediction_input_fingerprint
+from app.services.account_model_monitoring_service import (
+    account_prediction_input_fingerprint,
+    has_current_similarity_evidence_contract,
+)
 from app.utils.exceptions import AppException
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 _ASSESSMENT_CACHE_NAMESPACE = "account-assessment-v2"
+_PROFILE_CACHE_NAMESPACE = "account-profile-projection-v2"
+_PROFILE_PAGE_CACHE_LIMIT = 4
+_profile_page_cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
 
 
 async def get_account_profiles(platform: str | None = None, event_id: str | None = None) -> list[dict]:
     """Return concise account profiles with the trained detector conclusion."""
 
+    projection = await _get_account_profile_projection(platform=platform, event_id=event_id)
+    return list(projection["items"])
+
+
+async def get_account_profile_page(
+    *,
+    platform: str | None = None,
+    event_id: str | None = None,
+    page: int = 1,
+    page_size: int = 200,
+) -> dict[str, Any]:
+    """Return a bounded page from the complete, versioned account projection."""
+
+    projection = await _get_account_profile_projection(platform=platform, event_id=event_id)
+    items = projection["items"]
+    start = (page - 1) * page_size
+    return {
+        "items": items[start:start + page_size],
+        "total": projection["total"],
+        "attention": projection["attention"],
+        "pending": projection["pending"],
+        "platforms": projection["platforms"],
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+async def _get_account_profile_projection(
+    *,
+    platform: str | None,
+    event_id: str | None,
+) -> dict[str, Any]:
+    """Build once per source/model identity and retain a bounded local page view."""
+
     mongo_db = get_mongo_db()
-    posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
-    assessments = await _model_assessments(posts)
-    profiles = [
-        _profile_projection(
-            profile,
-            assessments.get(
-                account_scope_key(
-                    str(profile.get("platform") or "unknown"),
-                    str(profile.get("account_id") or ""),
-                )
-            ),
-        )
-        for profile in build_account_profiles(posts)
-    ]
-    return sorted(profiles, key=_profile_sort_key)
+    active_model = await get_active_account_model()
+    fingerprint = await event_data_fingerprint(mongo_db, event_id=event_id, platform=platform)
+
+    async def build_projection() -> dict[str, Any]:
+        activities = await load_event_account_activities(mongo_db, event_id=event_id, platform=platform)
+        assessments = await _model_assessments(activities, active_model=active_model)
+        profiles = [
+            _profile_projection(
+                profile,
+                assessments.get(
+                    account_scope_key(
+                        str(profile.get("platform") or "unknown"),
+                        str(profile.get("account_id") or ""),
+                    )
+                ),
+            )
+            for profile in build_account_profiles(activities)
+        ]
+        items = sorted(profiles, key=_profile_sort_key)
+        return {
+            "items": items,
+            "total": len(items),
+            "attention": sum(1 for item in items if item.get("assessment", {}).get("level") == "attention"),
+            "pending": sum(1 for item in items if item.get("assessment", {}).get("level") == "pending"),
+            "platforms": sorted({str(item.get("platform") or "") for item in items if item.get("platform")}),
+        }
+
+    if fingerprint is None:
+        return await build_projection()
+
+    cache_key = build_query_cache_key(
+        _PROFILE_CACHE_NAMESPACE,
+        event_id or "*",
+        platform or "*",
+        fingerprint,
+        getattr(active_model, "model_version", "none"),
+        getattr(active_model, "artifact_hash", ""),
+        getattr(active_model, "pointer_revision", 0),
+    )
+    local_projection = _profile_page_cache.get(cache_key)
+    if local_projection is not None:
+        _profile_page_cache.move_to_end(cache_key)
+        return local_projection
+
+    projection = await get_or_build_query_result(cache_key, build_projection)
+    _profile_page_cache[cache_key] = projection
+    _profile_page_cache.move_to_end(cache_key)
+    while len(_profile_page_cache) > _PROFILE_PAGE_CACHE_LIMIT:
+        _profile_page_cache.popitem(last=False)
+    return projection
 
 
 async def get_account_detail(
@@ -58,14 +134,14 @@ async def get_account_detail(
     """Return one account's business profile and its recent public content."""
 
     mongo_db = get_mongo_db()
-    scope_posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
-    posts = [post for post in scope_posts if str(post.get("author_id") or "") == account_id]
+    scope_activities = await load_event_account_activities(mongo_db, event_id=event_id, platform=platform)
+    activities = [activity for activity in scope_activities if str(activity.get("author_id") or "") == account_id]
 
-    if not posts:
+    if not activities:
         return None
     platforms = {
-        str(post.get("platform") or "unknown").strip().lower()
-        for post in posts
+        str(activity.get("platform") or "unknown").strip().lower()
+        for activity in activities
     }
     if not platform and len(platforms) > 1:
         raise AppException(
@@ -73,11 +149,11 @@ async def get_account_detail(
             msg="platform is required when an account id exists on multiple platforms.",
         )
 
-    profiles = build_account_profiles(posts)
+    profiles = build_account_profiles(activities)
     profile = profiles[0] if profiles else {}
-    assessments = await _model_assessments(scope_posts)
+    assessments = await _model_assessments(scope_activities)
 
-    recent_posts = sorted(posts, key=_post_timestamp, reverse=True)[:20]
+    recent_posts = sorted(activities, key=_post_timestamp, reverse=True)[:20]
     for post in recent_posts:
         post.pop("raw_data", None)
         for key, value in list(post.items()):
@@ -95,12 +171,17 @@ async def get_account_detail(
     }
 
 
-async def _model_assessments(posts: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+async def _model_assessments(
+    posts: list[dict[str, Any]],
+    *,
+    active_model: Any | None = None,
+) -> dict[str, dict[str, Any]]:
     """Run the detector per platform and retain platform-scoped identities."""
 
     if not posts:
         return {}
-    active_model = await get_active_account_model()
+    if active_model is None:
+        active_model = await get_active_account_model()
     stored_assessments = await _stored_model_assessments(posts, active_model)
     if stored_assessments:
         return stored_assessments
@@ -159,6 +240,8 @@ async def _stored_model_assessments(
         return {}
     latest_by_scope: dict[str, AccountPredictionAudit] = {}
     for row in rows:
+        if not has_current_similarity_evidence_contract(_loads(row.prediction_json)):
+            continue
         scope_key = account_scope_key(row.platform, row.account_id)
         if fingerprints.get(scope_key) != row.input_fingerprint:
             continue

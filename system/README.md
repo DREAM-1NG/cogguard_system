@@ -99,9 +99,9 @@ The current product workspace is `/api/v2/review-cases/*`.
 - `GET /api/v2/review-cases/{case_id}` returns case detail.
 - `GET /api/v2/review-cases/{case_id}/teacher-audit` returns the bounded,
   read-only review audit projection: execution state, role stages, traceable
-  source excerpts, retrieval queries, and short rationale capsules when
-  persisted. It never returns raw prompts, full chain-of-thought, provider
-  credentials, or model confidence targets.
+  source excerpts, retrieval queries, short rationale capsules, and governance
+  references when persisted. It never returns raw prompts, full
+  chain-of-thought, provider credentials, or model confidence targets.
 - `GET /api/v2/review-cases/{case_id}/evidence` returns assessment-group counts and one
   cursor-paginated evidence group. It accepts `assessment`, `cursor`, and `limit`; the
   default is the first 40 unresolved items.
@@ -140,6 +140,34 @@ metric, the page explicitly shows that it is unavailable instead of displaying
 zero. The available semantic fields are sentiment, raw NLI stance, keywords,
 topics, entities, platform/time scope, and the exact evidence references.
 
+## Semantic Evidence Workspace
+
+The authenticated Event Review Case workspace provides one linked semantic
+surface at `/risk/semantic-evidence`. It reads the same saved, ready,
+snapshot-bound semantic artifact without recomputing analysis or submitting a
+Review request. Keywords, sentiment, stance, topics, named entities,
+time/platform slices, community summaries, and traceable content share one
+event scope and filter state. The prior cluster, entity, temporal, and
+traceable URLs redirect here while retaining their query scope.
+
+The first page is intentionally compact. A new semantic run persists a
+source-hash-pinned Semantic Page Read Model containing aggregates, bounded
+cross-facet relations, and one initial traceable page of at most 40 records,
+but never raw `layers`. The backend verifies its source SHA-256 and snapshot
+freshness before serving it. A facet selection is reprojected from the verified
+source artifact on the server, returning only the linked aggregates and the
+requested record page. Older runs take a verified compatibility read once and
+may backfill the current model afterward. Traceable content provides snapshot
+text, stable evidence reference, and an optional source URL for source
+inspection; it is not a factual truth verdict. The complete artifact endpoint
+remains for existing internal consumers that require its full shape.
+
+The dashboard shows governance references only when they were persisted in the
+selected Teacher audit sidecar. The `/risk` overview deliberately does not
+load that audit or any semantic artifact; the semantic subpages load their own
+artifact only after the analyst opens them. The UI never backfills a historical
+audit from the current governance catalog.
+
 Semantic artifact freshness is evaluated against the artifact snapshot's own
 analysis windows. The backend rebuilds a non-persisted current snapshot with
 those windows before serving a ready projection; event rows outside the windows
@@ -170,6 +198,14 @@ The profile endpoint does not expose legacy rule-derived scores, detector
 probabilities, runtime modes, or support-graph details. Results are cached by
 the selected corpus fingerprint and active account-model identity, so account
 details reuse the same finding until either the source corpus or model changes.
+
+The analyst-facing `/accounts` workspace is a platform-scoped master-detail
+view. It preserves the selected event, platform, and account in the URL; an
+explicit current-scope detection run can display that run's business-facing
+finding and probability. Its **相似账号** list preserves the detector output's
+platform-local order for analyst drill-down only. It is not evidence of a
+follow, friend, repost, or coordination relationship, and an absent output is
+shown as an empty state rather than substituted data.
 
 Account detection also has an analyst-in-the-loop active-learning control plane:
 
@@ -482,3 +518,24 @@ rule separation, and held-out target sampling for `cad`, `dynahate`, and
 ablation only. The runner's dry-run performs no DeepSeek, Exa, or external
 retrieval call. It does not alter Student training, LRKD, product Review
 routing, or multimodal capabilities.
+
+## Snapshot-Bound Review Runtime
+
+`/risk` is an analyst workbench. Its initial case request loads only case and
+activity state. Student assessment, Teacher audit, governance references, and
+the Countermeasure Report are read from dedicated endpoints when an analyst
+opens the matching region or the corresponding activity arrives.
+
+The Student Bundle is calculated once for a newly created Event Snapshot and
+persisted with it. `POST /api/v2/review-cases/{case_id}/student-reassess` is
+the only product path that explicitly refreshes it. The approved HateCoT harm
+artifact provides the harm axis; claim-deception returns `unconfigured` until
+its own approved artifact exists. Neither axis uses a keyword or deterministic
+shadow fallback.
+
+Teacher Audit remains analyst-triggered and asynchronous. Provider, format, or
+chain failure is persisted as `teacher_review_failed` and is visible in the
+case activity stream. A quality-gated Countermeasure Report is emitted only
+after a parseable Judge result, traceable input spans, and Teacher-used,
+persisted governance references. It is an internal Markdown-downloadable
+draft, never an automatic content, account, or publication action.

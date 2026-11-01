@@ -24,6 +24,7 @@ RUN_ARTIFACT_COLLECTION = "analysis_run_artifacts"
 SNAPSHOT_CHUNK_SCHEMA = "cogguard.analysis.event_snapshot.chunked.v1"
 RUN_ARTIFACT_CHUNK_SCHEMA = "cogguard.analysis.run_artifact.chunked.v1"
 SEMANTIC_ARTIFACT_KEY = "stage:semantic_enrichment:result"
+SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY = "stage:semantic_enrichment:page_read_model:v1"
 # Keep chunks far below MongoDB's 16MB document limit; event snapshots can carry
 # tens of thousands of comments during real-system runs.
 SNAPSHOT_PAYLOAD_CHARS = 512_000
@@ -61,6 +62,9 @@ class AnalysisStore(Protocol):
         ...
 
     async def get_run(self, run_id: str) -> Any | None:
+        ...
+
+    async def list_runs_for_event(self, *, event_id: str) -> list[Any]:
         ...
 
     async def update_run_status(
@@ -183,6 +187,19 @@ class AnalysisRegistry:
     async def get_run(self, run_id: str) -> dict[str, Any] | None:
         run = await self.store.get_run(run_id)
         return _mapping(run) if run is not None else None
+
+    async def list_runs_for_event(self, *, event_id: str) -> list[dict[str, Any]] | None:
+        """Return runs for one event without scanning every artifact root.
+
+        Older lightweight test stores do not yet implement this indexed lookup;
+        ``None`` keeps their compatibility fallback explicit. Production uses
+        the indexed SQL event column before querying Mongo by exact artifact ID.
+        """
+        lister = getattr(self.store, "list_runs_for_event", None)
+        if lister is None:
+            return None
+        rows = await lister(event_id=event_id)
+        return [_mapping(row) for row in rows]
 
     async def load_event_snapshot(self, snapshot_id: str) -> EventSnapshot:
         record = await self.store.get_snapshot_record(snapshot_id)
@@ -334,6 +351,31 @@ class AnalysisRegistry:
     async def list_semantic_artifact_candidates(self, event_id: str) -> list[dict[str, Any]]:
         """Return semantic result roots for one event, newest run first."""
         collection = _get_collection(self.mongo_db, RUN_ARTIFACT_COLLECTION)
+        event_runs = await self.list_runs_for_event(event_id=event_id)
+        if event_runs is not None:
+            candidates: list[tuple[dict[str, Any], str]] = []
+            for run in event_runs:
+                run_id = str(run.get("run_id") or "").strip()
+                if not run_id:
+                    continue
+                root = await collection.find_one(
+                    {"artifact_id": f"{run_id}:{SEMANTIC_ARTIFACT_KEY}"},
+                    {"_id": 0, "created_at": 1},
+                )
+                if isinstance(root, dict):
+                    candidates.append((run, str(root.get("created_at") or "")))
+            candidates.sort(
+                key=lambda candidate: (
+                    str(candidate[0].get("created_at") or ""),
+                    candidate[1],
+                    str(candidate[0].get("run_id") or ""),
+                ),
+                reverse=True,
+            )
+            return [run for run, _artifact_created_at in candidates]
+
+        # Compatibility only for stores that predate event-scoped run lookup.
+        # Product deployments always take the indexed path above.
         cursor = collection.find(
             {"artifact_key": SEMANTIC_ARTIFACT_KEY},
             {"_id": 0, "run_id": 1, "created_at": 1, "root_artifact_id": 1},
@@ -510,6 +552,14 @@ class SqlAlchemyAnalysisStore:
         result = await self.session.execute(select(AnalysisRun).where(AnalysisRun.run_id == run_id))
         return result.scalar_one_or_none()
 
+    async def list_runs_for_event(self, *, event_id: str) -> list[AnalysisRun]:
+        result = await self.session.execute(
+            select(AnalysisRun)
+            .where(AnalysisRun.event_id == event_id)
+            .order_by(AnalysisRun.created_at.desc(), AnalysisRun.run_id.desc())
+        )
+        return list(result.scalars().all())
+
     async def update_run_status(
         self,
         *,
@@ -599,6 +649,7 @@ class SqlAlchemyAnalysisStore:
             "artifact_uri": version.artifact_uri,
             "artifact_hash": version.artifact_hash,
             "checkpoint_path": artifact.get("checkpoint_path") if isinstance(artifact, dict) else None,
+            "config": _json_loads(version.config_json, {}),
             "status": version.status,
             "provenance": provenance,
         }

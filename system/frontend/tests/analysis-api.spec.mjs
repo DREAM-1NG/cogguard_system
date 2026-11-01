@@ -18,3 +18,17 @@ test('semantic projection client calls the event-scoped product path with an enc
   assert.match(analysisApi, /export function getEventSemantic\(eventId: string\)/)
   assert.match(analysisApi, /events\/\$\{encodeURIComponent\(eventId\)\}\/semantic/)
 })
+
+test('semantic page client requests a compact view projection with bounded pagination', () => {
+  assert.match(analysisApi, /export function getSemanticPageProjection\(/)
+  assert.match(analysisApi, /events\/\$\{encodeURIComponent\(eventId\)\}\/semantic\/views\/\$\{encodeURIComponent\(view\)\}/)
+  assert.match(analysisApi, /page_size: pageSize/)
+})
+
+test('semantic workspace client issues one compact event-scoped request with linked filters', () => {
+  assert.match(analysisApi, /export function getSemanticWorkspace\(/)
+  assert.match(analysisApi, /events\/\$\{encodeURIComponent\(eventId\)\}\/semantic\/workspace/)
+  assert.match(analysisApi, /const platforms = filters\.platforms\?\.filter\(Boolean\)\.join\(','\)/)
+  assert.match(analysisApi, /entity: filters\.entity \|\| undefined/)
+  assert.match(analysisApi, /page_size: filters\.pageSize \|\| 40/)
+})

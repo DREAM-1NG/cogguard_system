@@ -58,12 +58,18 @@ async def _require_readable_job(
     db: AsyncSession,
     current_user: User,
     expected_job_type: str | None = None,
+    allow_admin_completed_media: bool = False,
 ) -> CrawlJob:
     result = await db.execute(select(CrawlJob).where(CrawlJob.id == job_id))
     job = result.scalar_one_or_none()
     if job is None or (expected_job_type is not None and job.job_type != expected_job_type):
         raise HTTPException(status_code=404, detail="任务不存在")
-    if job.created_by not in {current_user.id, 0}:
+    is_admin_completed_media = (
+        allow_admin_completed_media
+        and current_user.role == "admin"
+        and job.status == "completed"
+    )
+    if job.created_by not in {current_user.id, 0} and not is_admin_completed_media:
         raise HTTPException(status_code=403, detail="无权读取该任务")
     return job
 
@@ -153,6 +159,7 @@ async def get_media_download(
         db=db,
         current_user=current_user,
         expected_job_type=media_download_service.MEDIA_DOWNLOAD_JOB_TYPE,
+        allow_admin_completed_media=True,
     )
     job = await media_download_service.get_media_download_job(job_id, db)
     if job is None:
@@ -208,7 +215,17 @@ async def query_data(
         page_size=page_size,
     )
     items, total = await crawl_service.query_posts(query)
-    return success(data={"total": total, "items": items})
+    enriched_items = []
+    for item in items:
+        local_media = await media_download_service.find_downloaded_post_media(
+            platform=str(item.get("platform") or ""),
+            post_id=str(item.get("post_id") or ""),
+            user_id=current_user.id,
+            db=db,
+            include_all_completed=current_user.role == "admin",
+        )
+        enriched_items.append(crawl_service.with_local_media_summary(item, local_media))
+    return success(data={"total": total, "items": enriched_items})
 
 
 @router.get("/posts/{platform}/{post_id}/comments")
@@ -242,6 +259,7 @@ async def get_post_media(
         post_id=post_id,
         user_id=current_user.id,
         db=db,
+        include_all_completed=current_user.role == "admin",
     )
     return success(data={"items": items})
 
@@ -258,6 +276,7 @@ async def get_media_download_content(
         db=db,
         current_user=current_user,
         expected_job_type=media_download_service.MEDIA_DOWNLOAD_JOB_TYPE,
+        allow_admin_completed_media=True,
     )
     item = media_download_service.resolve_manifest_media_item(
         media_download_service.read_job_manifest(job),

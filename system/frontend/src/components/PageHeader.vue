@@ -4,7 +4,7 @@
 <template>
   <div class="page-header">
     <h2 class="page-title">{{ title }}</h2>
-    <a-popover
+    <APopover
       v-if="description || slots.description"
       placement="bottomLeft"
       :trigger="['hover', 'focus', 'click']"
@@ -17,13 +17,14 @@
       <button type="button" class="page-help-button" aria-label="查看页面说明">
         <QuestionCircleOutlined aria-hidden="true" />
       </button>
-    </a-popover>
+    </APopover>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useSlots } from 'vue'
 import { QuestionCircleOutlined } from '@ant-design/icons-vue'
+import { APopover } from '@/ui/semanticWorkspaceControls'
 
 const slots = useSlots()
 

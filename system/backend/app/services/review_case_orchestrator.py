@@ -7,7 +7,7 @@ for existing imports and monkeypatch paths.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from sqlalchemy import select
@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.analysis import EventSnapshot
 from app.core.analysis.executor import AnalysisExecutor, default_analysis_engine_ports
 from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
+from app.models.analysis import AnalysisRun
 from app.models.review_case import (
     CaseActivity,
     ReviewCase,
@@ -32,7 +33,6 @@ from app.services.review_case_analysis_projection import (
     _teacher_business_advisory,
     derive_analysis_windows,
     project_analysis_results,
-    teacher_routing_reasons,
 )
 from app.services.review_case_repository import (
     CaseRevisionRef,
@@ -111,47 +111,14 @@ class ReviewCaseOrchestrator:
             created_by=created_by,
         )
 
-        student = dict(stage_results.get("student") or {})
-        reasons = teacher_routing_reasons(
-            student=student,
-            evidence_sufficiency=projection.evidence_sufficiency.value,
-            urgency=projection.urgency.value,
-        )
-        teacher_requested = False
-        if (
-            reasons
-            and not defer_teacher
-            and not await self.repository.has_active_teacher(ref=ref)
-        ):
-            teacher_run = await self.registry.create_run(
-                event_id=snapshot.event_id,
-                snapshot_id=snapshot.snapshot_id,
-                requested_stages=["teacher"],
-                options={"teacher": {"routing_reasons": reasons}},
-                created_by=created_by,
-            )
-            teacher_run_id = str(teacher_run["run_id"])
-            teacher_result = await self.executor.execute_run(teacher_run_id)
-            teacher = dict((teacher_result.get("results") or {}).get("teacher") or {})
-            teacher_verdict_id = str(
-                teacher.get("job_id") or teacher.get("verdict_id") or ""
-            )
-            if teacher_verdict_id:
-                await self.repository.record_teacher_submission(
-                    ref=ref,
-                    teacher_run_id=teacher_run_id,
-                    teacher_verdict_id=teacher_verdict_id,
-                )
-                teacher_requested = True
-
         return CaseOrchestrationOutcome(
             case_id=ref.case_id,
             snapshot_revision_id=ref.snapshot_revision_id,
             created_case=ref.created_case,
             created_revision=True,
             analysis_run_id=analysis_run_id,
-            teacher_requested=teacher_requested,
-            teacher_reasons=tuple(reasons),
+            teacher_requested=False,
+            teacher_reasons=(),
         )
 
 
@@ -191,19 +158,6 @@ async def process_successful_crawl(
         created_by=created_by,
         defer_teacher=True,
     )
-    # Commit the case and snapshot revision before dispatching a worker that
-    # writes its advisory from an independent database session.
-    await db.commit()
-    if outcome.created_revision and outcome.teacher_reasons:
-        submitted = await submit_teacher_review_for_case(
-            case_id=outcome.case_id,
-            db=db,
-            mongo_db=mongo_db,
-            requested_by=created_by,
-            routing_reasons=list(outcome.teacher_reasons),
-        )
-        outcome = replace(outcome, teacher_requested=submitted)
-        await db.commit()
     return outcome.to_dict()
 
 
@@ -213,7 +167,9 @@ async def submit_teacher_review_for_case(
     db: AsyncSession,
     mongo_db: Any,
     requested_by: int,
-    routing_reasons: list[str],
+    review_tasks: list[str] | None = None,
+    evidence_refs: list[str] | None = None,
+    routing_reasons: list[str] | None = None,
 ) -> bool:
     case = (
         await db.execute(select(ReviewCase).where(ReviewCase.case_id == case_id))
@@ -246,7 +202,14 @@ async def submit_teacher_review_for_case(
         event_id=case.event_id,
         snapshot_id=revision.snapshot_id,
         requested_stages=["teacher"],
-        options={"teacher": {"routing_reasons": list(routing_reasons)}},
+        options={
+            "teacher": {
+                "review_tasks": list(review_tasks or ["interpersonal_harm"]),
+                "evidence_refs": list(evidence_refs or []),
+                "request_reason": list(routing_reasons or []),
+                "human_triggered": True,
+            }
+        },
         created_by=requested_by,
     )
     run_id = str(run["run_id"])
@@ -258,6 +221,17 @@ async def submit_teacher_review_for_case(
     verdict_id = str(teacher.get("job_id") or teacher.get("verdict_id") or "")
     if not verdict_id:
         return False
+    task_id = str(teacher.get("task_id") or "").strip()
+    if task_id:
+        run_row = (
+            await db.execute(
+                select(AnalysisRun)
+                .where(AnalysisRun.run_id == run_id)
+                .with_for_update()
+            )
+        ).scalar_one()
+        run_row.celery_task_id = task_id
+        await db.flush()
     await repository.record_teacher_submission(
         ref=ref,
         teacher_run_id=run_id,
@@ -374,6 +348,130 @@ async def record_teacher_advisory(
     return True
 
 
+async def record_teacher_review_failure(
+    *,
+    snapshot_id: str,
+    verdict: dict[str, Any],
+    db: AsyncSession,
+) -> bool:
+    """Project a persisted Teacher failure without changing case conclusions."""
+
+    revision = (
+        await db.execute(
+            select(ReviewCaseSnapshotRevision)
+            .where(ReviewCaseSnapshotRevision.snapshot_id == snapshot_id)
+            .order_by(ReviewCaseSnapshotRevision.revision_number.desc())
+            .limit(1)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if revision is None:
+        return False
+    case = (
+        await db.execute(
+            select(ReviewCase)
+            .where(ReviewCase.case_id == revision.case_id)
+            .with_for_update()
+        )
+    ).scalar_one()
+    verdict_id = str(verdict.get("verdict_id") or verdict.get("job_id") or "")
+    source_ref = verdict_id or revision.snapshot_revision_id
+    existing_activity = (
+        await db.execute(
+            select(CaseActivity.id).where(
+                CaseActivity.case_id == case.case_id,
+                CaseActivity.activity_type == CaseActivityType.TEACHER_REVIEW_FAILED.value,
+                CaseActivity.source_ref == source_ref,
+            )
+        )
+    ).first()
+    if existing_activity is not None:
+        return False
+
+    revision.teacher_verdict_id = verdict_id or revision.teacher_verdict_id
+    detail_lines = [
+        str(verdict.get("reason") or "Independent review could not be completed."),
+        str(verdict.get("task_state") or "failed"),
+    ]
+    db.add(
+        CaseActivity(
+            case_id=case.case_id,
+            snapshot_revision_id=revision.snapshot_revision_id,
+            activity_type=CaseActivityType.TEACHER_REVIEW_FAILED.value,
+            action_required=ActionRequired.NONE.value,
+            source_ref=source_ref,
+            summary="Independent review did not complete; an analyst may retry it.",
+            detail_lines_json=_json_dumps(detail_lines),
+            evidence_refs_json="[]",
+            actor_name="System",
+            created_by=0,
+        )
+    )
+    await db.flush()
+    return True
+
+
+async def record_countermeasure_report_available(
+    *,
+    snapshot_id: str,
+    verdict: dict[str, Any],
+    db: AsyncSession,
+) -> bool:
+    """Append an activity only for a quality-gated, persisted draft report."""
+
+    report = verdict.get("countermeasure_report")
+    if not isinstance(report, dict) or report.get("status") != "available" or report.get("quality_gate") is not True:
+        return False
+    revision = (
+        await db.execute(
+            select(ReviewCaseSnapshotRevision)
+            .where(ReviewCaseSnapshotRevision.snapshot_id == snapshot_id)
+            .order_by(ReviewCaseSnapshotRevision.revision_number.desc())
+            .limit(1)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if revision is None:
+        return False
+    case = (
+        await db.execute(
+            select(ReviewCase)
+            .where(ReviewCase.case_id == revision.case_id)
+            .with_for_update()
+        )
+    ).scalar_one()
+    verdict_id = str(verdict.get("verdict_id") or verdict.get("job_id") or "")
+    source_ref = verdict_id or revision.snapshot_revision_id
+    existing_activity = (
+        await db.execute(
+            select(CaseActivity.id).where(
+                CaseActivity.case_id == case.case_id,
+                CaseActivity.activity_type == CaseActivityType.COUNTERMEASURE_REPORT_AVAILABLE.value,
+                CaseActivity.source_ref == source_ref,
+            )
+        )
+    ).first()
+    if existing_activity is not None:
+        return False
+
+    db.add(
+        CaseActivity(
+            case_id=case.case_id,
+            snapshot_revision_id=revision.snapshot_revision_id,
+            activity_type=CaseActivityType.COUNTERMEASURE_REPORT_AVAILABLE.value,
+            action_required=ActionRequired.NONE.value,
+            source_ref=source_ref,
+            summary="A quality-gated internal countermeasure draft is available.",
+            detail_lines_json=_json_dumps(["The draft is advisory only and requires analyst confirmation."]),
+            evidence_refs_json=_json_dumps(list(report.get("evidence_refs") or [])[:50]),
+            actor_name="System",
+            created_by=0,
+        )
+    )
+    await db.flush()
+    return True
+
+
 __all__ = [
     "AnalysisProjection",
     "CaseOrchestrationOutcome",
@@ -385,6 +483,7 @@ __all__ = [
     "process_successful_crawl",
     "project_analysis_results",
     "record_teacher_advisory",
+    "record_countermeasure_report_available",
+    "record_teacher_review_failure",
     "submit_teacher_review_for_case",
-    "teacher_routing_reasons",
 ]

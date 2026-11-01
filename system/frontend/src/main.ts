@@ -5,94 +5,16 @@
  */
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import {
-  Alert,
-  Avatar,
-  Badge,
-  Button,
-  Card,
-  Checkbox,
-  Col,
-  Descriptions,
-  Divider,
-  Drawer,
-  Dropdown,
-  Empty,
-  Form,
-  Input,
-  InputNumber,
-  Layout,
-  List,
-  Menu,
-  Modal,
-  Pagination,
-  Popconfirm,
-  Popover,
-  Radio,
-  Row,
-  Segmented,
-  Select,
-  Skeleton,
-  Slider,
-  Space,
-  Spin,
-  Switch,
-  Table,
-  Tabs,
-  Tag,
-  Timeline,
-  Tooltip,
-  Upload,
-} from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 
 import App from './App.vue'
 import router from './router'
+import { installAntDesignComponents } from './ui/antDesignComponents'
 
 const app = createApp(App)
 
 app.use(createPinia())
+installAntDesignComponents(app)
 app.use(router)
-for (const component of [
-  Alert,
-  Avatar,
-  Badge,
-  Button,
-  Card,
-  Checkbox,
-  Col,
-  Descriptions,
-  Divider,
-  Drawer,
-  Dropdown,
-  Empty,
-  Form,
-  Input,
-  InputNumber,
-  Layout,
-  List,
-  Menu,
-  Modal,
-  Pagination,
-  Popconfirm,
-  Popover,
-  Radio,
-  Row,
-  Segmented,
-  Select,
-  Skeleton,
-  Slider,
-  Space,
-  Spin,
-  Switch,
-  Table,
-  Tabs,
-  Tag,
-  Timeline,
-  Tooltip,
-  Upload,
-]) {
-  app.use(component)
-}
 
 app.mount('#app')

@@ -3,7 +3,7 @@
     <PageHeader title="数据采集" description="配置检索范围，按任务查看采集证据与已下载媒体。" />
 
     <div class="crawl-workbench">
-      <aside class="control-column" aria-label="采集控制台">
+      <aside class="control-column crawl-scroll-pane" tabindex="0" aria-label="采集控制台">
         <section class="tool-surface request-surface">
           <div class="surface-heading">
             <div><p class="eyebrow">01 / acquisition</p><h2>采集配置</h2></div>
@@ -74,19 +74,19 @@
       </aside>
 
       <main class="preview-column" aria-label="证据预览台">
-        <section class="tool-surface content-surface">
+        <section class="tool-surface content-surface preview-pane">
           <div class="surface-heading"><div><p class="eyebrow">selected crawl job</p><h2>帖子列表</h2></div><span class="result-count">{{ postTotal }} 条内容</span></div>
           <div class="filter-bar" aria-label="帖子筛选"><label class="filter-control-label" for="data-platform">平台</label><a-select id="data-platform" v-model:value="dataFilters.platform" allow-clear placeholder="全部平台" @change="handleDataFilterChange"><a-select-option v-for="platform in platforms" :key="platform.id" :value="platform.id">{{ platform.name }}</a-select-option></a-select><label class="filter-control-label" for="data-keyword">关键词</label><a-input id="data-keyword" v-model:value="dataFilters.keyword" allow-clear placeholder="筛选内容" @pressEnter="handleDataFilterChange" /><a-checkbox v-model:checked="dataFilters.has_media" @change="handleDataFilterChange">含媒体</a-checkbox><a-button @click="handleDataFilterChange">筛选</a-button></div>
           <div v-if="!selectedJob" class="empty-panel"><a-empty description="先从左侧选择一个采集任务" /></div>
           <div v-else-if="loadingData" class="empty-panel"><a-spin tip="正在读取任务内容" /></div>
           <div v-else-if="postData.length" class="post-list" role="listbox" aria-label="采集帖子">
-            <button v-for="post in postData" :key="`${post.platform}:${post.post_id}`" type="button" class="post-row" :class="{ selected: selectedPost?.post_id === post.post_id && selectedPost?.platform === post.platform }" role="option" :aria-selected="selectedPost?.post_id === post.post_id && selectedPost?.platform === post.platform" @click="selectPost(post)"><span class="post-platform">{{ platformName(post.platform) }}</span><span class="post-row-body"><strong>{{ post.author_name || '未知作者' }}</strong><span class="post-snippet">{{ post.content || '无文本内容' }}</span><span class="post-meta">{{ formatDate(post.timestamp) }} · 赞 {{ post.likes ?? 0 }} · 转发 {{ post.reposts ?? 0 }}</span></span><span class="post-media-state" :class="{ active: post.media_urls?.length }">{{ post.media_urls?.length ? '媒体' : '文本' }}</span></button>
+            <button v-for="post in postData" :key="`${post.platform}:${post.post_id}`" type="button" class="post-row" :class="{ selected: selectedPost?.post_id === post.post_id && selectedPost?.platform === post.platform }" role="option" :aria-selected="selectedPost?.post_id === post.post_id && selectedPost?.platform === post.platform" @click="selectPost(post)"><span class="post-platform">{{ platformName(post.platform) }}</span><span class="post-row-body"><strong>{{ post.author_name || '未知作者' }}</strong><span class="post-snippet">{{ post.content || '无文本内容' }}</span><span class="post-meta">{{ formatDate(post.timestamp) }} · 赞 {{ post.likes ?? 0 }} · 转发 {{ post.reposts ?? 0 }}</span></span><span class="post-media-state" :class="{ active: post.media_urls?.length, ready: post.local_media?.available_count }">{{ post.local_media?.available_count ? `已下载 ${post.local_media.available_count}` : post.media_urls?.length ? '待下载' : '文本' }}</span></button>
           </div>
           <div v-else class="empty-panel"><a-empty description="当前任务没有符合条件的帖子" /></div>
           <div v-if="postTotal > dataPageSize" class="pagination-row"><a-pagination :current="dataPage" :page-size="dataPageSize" :total="postTotal" :show-size-changer="false" @change="handlePageChange" /></div>
         </section>
 
-        <section class="tool-surface detail-surface">
+        <section class="tool-surface detail-surface preview-pane">
           <div class="surface-heading"><div><p class="eyebrow">evidence preview</p><h2>选中内容</h2></div><a-tag v-if="selectedPost" color="blue">{{ platformName(selectedPost.platform) }}</a-tag></div>
           <div v-if="!selectedPost" class="empty-panel detail-empty"><a-empty description="选择左侧帖子查看全文、评论和本地媒体" /></div>
           <div v-else class="post-detail">
@@ -113,7 +113,7 @@ import { choosePrimaryKeyword, flattenKeywordGroups, parseJobSummary, readCrawlQ
 interface PlatformOption { id: string; name: string; status: string; hint?: string }
 interface KeywordGroup { id: string; name: string; keywords: string[]; draft: string; expanded: boolean }
 interface CrawlJobItem { id: number; job_type: string; platform: string; status: string; progress: number; result_summary?: string | null; created_at: string }
-interface PostItem { post_id: string; platform: string; author_name: string; author_id?: string; content: string; timestamp: string; url?: string; likes: number; reposts: number; comments_count?: number; media_urls?: string[] }
+interface PostItem { post_id: string; platform: string; author_name: string; author_id?: string; content: string; timestamp: string; url?: string; likes: number; reposts: number; comments_count?: number; media_urls?: string[]; local_media?: { available_count: number; types: Array<'image' | 'video'> } }
 interface CommentItem { comment_id: string; author_name: string; content: string; timestamp: string }
 interface LocalMediaItem { job_id: number; item_index: number; media_type: 'image' | 'video'; filename: string; content_type?: string | null; previewable: boolean; preview_url: string; status?: string; object_url?: string }
 
@@ -139,11 +139,11 @@ async function handleDelete(jobId: number) { await deleteCrawlJob(jobId); if (se
 async function handleBulkDownload(job: CrawlJobItem) { if (!['xhs', 'douyin'].includes(job.platform)) { message.warning('当前平台暂不支持本地媒体下载'); return }; creatingDownload.value = true; try { const response = await createMediaDownloadJob({ platform: job.platform, media_types: ['video', 'image'] }) as { data?: CrawlJobItem }; message.success('媒体下载任务已启动'); await fetchJobs(); if (response.data?.id) await waitForMediaDownload(response.data.id) } finally { creatingDownload.value = false } }
 async function handleDownloadSelected() { if (!selectedPost.value || !canDownloadSelectedPost.value) return; creatingDownload.value = true; try { const response = await createMediaDownloadJob({ platform: selectedPost.value.platform, post_ids: [selectedPost.value.post_id], media_types: ['video', 'image'] }) as { data?: CrawlJobItem }; message.success('当前帖子的媒体下载已启动'); if (response.data?.id) await waitForMediaDownload(response.data.id) } finally { creatingDownload.value = false } }
 async function waitForMediaDownload(jobId: number) { for (let attempt = 0; attempt < 8; attempt += 1) { const response = await getMediaDownloadJob(jobId) as { data?: CrawlJobItem }; const status = response.data?.status; if (status === 'completed' || status === 'failed') break; await new Promise((resolve) => window.setTimeout(resolve, 1000)) }; if (selectedPost.value) await fetchPostMedia(selectedPost.value); await fetchJobs() }
-async function selectJob(jobId: number) { if (selectedJobId.value === jobId && selectedPost.value === null) return; const reset = resetPreviewForJob({ selectedJobId: selectedJobId.value, selectedPostId: selectedPost.value?.post_id || null, comments: comments.value, media: localMedia.value }, jobId); selectedJobId.value = reset.selectedJobId; selectedPost.value = null; comments.value = []; localMedia.value = []; clearObjectUrls(); dataPage.value = 1; await fetchData(1); syncUrl() }
+async function selectJob(jobId: number) { const jobChanged = selectedJobId.value !== jobId; if (jobChanged) { const reset = resetPreviewForJob({ selectedJobId: selectedJobId.value, selectedPostId: selectedPost.value?.post_id || null, comments: comments.value, media: localMedia.value }, jobId); selectedJobId.value = reset.selectedJobId; selectedPost.value = null; comments.value = []; localMedia.value = []; clearObjectUrls(); dataPage.value = 1 }; await fetchData(jobChanged ? 1 : dataPage.value); syncUrl() }
 async function selectPost(post: PostItem) { selectedPost.value = post; comments.value = []; localMedia.value = []; clearObjectUrls(); const generation = ++postRequestGeneration.value; loadingComments.value = true; try { const [commentResponse, mediaResponse] = await Promise.all([selectedJobId.value ? getPostComments(post.platform, post.post_id, { crawl_job_id: selectedJobId.value, limit: 3 }) : Promise.resolve({ data: { items: [] } }), getPostMedia(post.platform, post.post_id)]) as [{ data: { items: CommentItem[] } }, { data: { items: LocalMediaItem[] } }]; if (generation !== postRequestGeneration.value || selectedPost.value?.post_id !== post.post_id) return; comments.value = commentResponse.data.items || []; localMedia.value = (mediaResponse.data.items || []).map((media) => ({ ...media, status: 'ready' })); await loadMediaObjects(generation) } finally { if (generation === postRequestGeneration.value) loadingComments.value = false }; syncUrl() }
 async function loadMediaObjects(generation: number) { const token = localStorage.getItem('access_token'); if (!token) return; for (const media of localMedia.value) { if (generation !== postRequestGeneration.value || !media.previewable) continue; const response = await fetch(getMediaContentPath(media.job_id, media.item_index), { headers: { Authorization: `Bearer ${token}` } }); if (!response.ok) { media.previewable = false; continue }; const objectUrl = URL.createObjectURL(await response.blob()); objectUrls.add(objectUrl); media.object_url = objectUrl } }
 async function fetchPostMedia(post: PostItem) { const response = await getPostMedia(post.platform, post.post_id) as { data: { items: LocalMediaItem[] } }; localMedia.value = (response.data.items || []).map((media) => ({ ...media, status: 'ready' })); await loadMediaObjects(postRequestGeneration.value) }
-async function fetchJobs() { if (!pageActive.value) return; loadingJobs.value = true; try { const response = await listCrawlJobs({ page: 1, page_size: 50 }) as { data: { items: CrawlJobItem[] } }; jobs.value = response.data.items || []; const queryJobId = readCrawlQuery(routeQueryParams()).jobId; const nextJob = contentJobs.value.find((job) => job.id === (selectedJobId.value || queryJobId)) || contentJobs.value[0]; if (nextJob && selectedJobId.value !== nextJob.id) await selectJob(nextJob.id) } finally { loadingJobs.value = false } }
+async function fetchJobs() { if (!pageActive.value) return; loadingJobs.value = true; try { const response = await listCrawlJobs({ page: 1, page_size: 50 }) as { data: { items: CrawlJobItem[] } }; jobs.value = response.data.items || []; const queryJobId = readCrawlQuery(routeQueryParams()).jobId; const nextJob = contentJobs.value.find((job) => job.id === (selectedJobId.value || queryJobId)) || contentJobs.value[0]; if (nextJob) await selectJob(nextJob.id) } finally { loadingJobs.value = false } }
 async function fetchData(page = 1) { if (!pageActive.value || !selectedJobId.value) { postData.value = []; postTotal.value = 0; return }; loadingData.value = true; dataPage.value = page; try { const response = await queryCrawlData({ crawl_job_id: selectedJobId.value, platform: dataFilters.platform, keyword: dataFilters.keyword.trim() || undefined, has_media: dataFilters.has_media || undefined, page, page_size: dataPageSize }) as { data: { items: PostItem[]; total: number } }; postData.value = response.data.items || []; postTotal.value = response.data.total || 0; if (selectedPost.value && !postData.value.some((post) => post.post_id === selectedPost.value?.post_id)) { selectedPost.value = null; comments.value = []; localMedia.value = [] } } finally { loadingData.value = false } }
 function handleDataFilterChange() { void fetchData(1); syncUrl() }
 function handlePageChange(page: number) { void fetchData(page) }
@@ -160,9 +160,16 @@ onMounted(activateCrawlPage); onActivated(activateCrawlPage); onDeactivated(deac
 
 <style scoped>
 .crawl-page { --crawl-border: #e5e7eb; --crawl-muted: #64748b; --crawl-text: #1f2937; color: var(--crawl-text); }
-.crawl-workbench { display: grid; grid-template-columns: minmax(300px, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
-.control-column, .preview-column { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.crawl-workbench { display: grid; grid-template-columns: minmax(300px, 5fr) minmax(0, 7fr); height: clamp(720px, calc(100dvh - 160px), 960px); min-height: 0; gap: 16px; align-items: stretch; }
+.control-column { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.preview-column { display: grid; grid-template-rows: minmax(400px, 1.35fr) minmax(280px, 0.85fr); gap: 16px; min-width: 0; min-height: 0; overflow: hidden; }
+.crawl-scroll-pane { min-height: 0; padding-right: 6px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: #aebdca transparent; scrollbar-gutter: stable; scrollbar-width: thin; }
+.crawl-scroll-pane:focus-visible { outline: 3px solid #91caff; outline-offset: 2px; }
+.crawl-scroll-pane::-webkit-scrollbar { width: 8px; }
+.crawl-scroll-pane::-webkit-scrollbar-thumb { border: 2px solid #f5f7fa; border-radius: 999px; background: #aebdca; }
+.crawl-scroll-pane::-webkit-scrollbar-thumb:hover { background: #7f94a8; }
 .tool-surface { background: #fff; border: 1px solid var(--crawl-border); border-radius: 8px; padding: 16px; box-shadow: 0 1px 2px rgba(15, 23, 42, .03); }
+.preview-pane { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .surface-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .compact-heading { margin-bottom: 12px; align-items: center; }
 .surface-heading h2 { margin: 3px 0 0; font-size: 18px; line-height: 1.3; font-weight: 650; letter-spacing: 0; }
@@ -202,7 +209,7 @@ onMounted(activateCrawlPage); onActivated(activateCrawlPage); onDeactivated(deac
 .job-history-actions { display: flex; align-items: center; gap: 2px; }
 .filter-bar { justify-content: flex-start; flex-wrap: wrap; margin-bottom: 12px; }
 .filter-bar :deep(.ant-select), .filter-bar :deep(.ant-input) { width: 150px; }
-.post-list { display: grid; gap: 4px; }
+.post-list { display: grid; min-height: 0; gap: 4px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: #aebdca transparent; scrollbar-width: thin; }
 .post-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; width: 100%; border: 1px solid transparent; border-radius: 6px; padding: 10px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .post-row:hover, .post-row.selected { border-color: #bfdbfe; background: #f8fbff; }
 .post-row:focus-visible, .job-history-row:focus-visible, .collapse-toggle:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }
@@ -212,7 +219,8 @@ onMounted(activateCrawlPage); onActivated(activateCrawlPage); onDeactivated(deac
 .post-snippet { overflow: hidden; color: #334155; font-size: 14px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
 .post-meta { color: var(--crawl-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .post-media-state { align-self: start; color: #94a3b8; font-size: 12px; }
-.post-media-state.active { color: #1677ff; }
+.post-media-state.active { color: #64748b; }
+.post-media-state.ready { color: #15803d; font-weight: 650; }
 .empty-panel { display: grid; min-height: 170px; place-items: center; }
 .pagination-row { justify-content: flex-end; margin-top: 12px; }
 .detail-empty { min-height: 240px; }
@@ -231,12 +239,13 @@ onMounted(activateCrawlPage); onActivated(activateCrawlPage); onDeactivated(deac
 .media-stage figcaption { overflow: hidden; padding: 7px 9px; color: #475569; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .media-unavailable { display: grid; aspect-ratio: 16 / 9; place-items: center; padding: 16px; color: #64748b; font-size: 13px; text-align: center; }
 .media-empty { justify-content: flex-start; flex-wrap: wrap; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 12px; color: #64748b; font-size: 13px; }
+.post-detail { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
 .comment-list { display: grid; gap: 8px; }
 .comment-row { border-left: 2px solid #e2e8f0; padding-left: 10px; }
 .comment-row strong { font-size: 13px; }
 .comment-row p { margin: 3px 0; color: #334155; font-size: 13px; line-height: 1.55; }
 .comment-row time { color: #94a3b8; font-size: 11px; }
 .inline-loading { display: flex; align-items: center; gap: 8px; color: var(--crawl-muted); font-size: 13px; }
-@media (max-width: 1100px) { .crawl-workbench { grid-template-columns: 1fr; } .control-column { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } .request-surface, .history-surface { grid-column: 1 / -1; } }
-@media (max-width: 720px) { .control-column { display: flex; } .tool-surface { padding: 13px; } .field-pair { grid-template-columns: 1fr; } .surface-heading { margin-bottom: 12px; } .post-row { grid-template-columns: 52px minmax(0, 1fr); } .post-media-state { display: none; } .filter-bar { align-items: stretch; } .filter-bar :deep(.ant-select), .filter-bar :deep(.ant-input), .filter-bar :deep(.ant-btn) { width: 100%; } .filter-control-label { width: 100%; margin: 0; } .media-stage-grid { grid-template-columns: 1fr; } .detail-meta-line { align-items: flex-start; flex-direction: column; gap: 4px; } }
+@media (max-width: 1100px) { .crawl-workbench { grid-template-columns: 1fr; height: auto; } .crawl-scroll-pane { overflow-y: visible; padding-right: 0; } .control-column { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } .request-surface, .history-surface { grid-column: 1 / -1; } .preview-column { min-height: 680px; } }
+@media (max-width: 720px) { .control-column, .preview-column { display: flex; min-height: 0; overflow: visible; } .preview-pane, .post-list, .post-detail { min-height: auto; overflow: visible; } .tool-surface { padding: 13px; } .field-pair { grid-template-columns: 1fr; } .surface-heading { margin-bottom: 12px; } .post-row { grid-template-columns: 52px minmax(0, 1fr); } .post-media-state { display: none; } .filter-bar { align-items: stretch; } .filter-bar :deep(.ant-select), .filter-bar :deep(.ant-input), .filter-bar :deep(.ant-btn) { width: 100%; } .filter-control-label { width: 100%; margin: 0; } .media-stage-grid { grid-template-columns: 1fr; } .detail-meta-line { align-items: flex-start; flex-direction: column; gap: 4px; } }
 </style>

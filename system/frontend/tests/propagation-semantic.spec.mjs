@@ -10,6 +10,23 @@ const frontendRoot = resolve(__dirname, '..')
 const propagationView = readFileSync(resolve(frontendRoot, 'src/views/propagation/index.vue'), 'utf8')
 const propagationApi = readFileSync(resolve(frontendRoot, 'src/api/propagation.ts'), 'utf8')
 
+test('compacts the propagation toolbar into an event selector and filter panel', () => {
+  const toolbarMarkup = propagationView.slice(
+    propagationView.indexOf('<div class="action-bar">'),
+    propagationView.indexOf('    <a-alert', propagationView.indexOf('<div class="action-bar">')),
+  )
+
+  assert.match(toolbarMarkup, /事件：\{\{ eventDisplayName \}\}/)
+  assert.match(toolbarMarkup, /class="filter-trigger"/)
+  assert.match(toolbarMarkup, /class="propagation-filter-panel"/)
+  assert.match(toolbarMarkup, /图中节点/)
+  assert.match(toolbarMarkup, /同步传播结果/)
+  assert.match(toolbarMarkup, /刷新趋势预测/)
+  assert.doesNotMatch(toolbarMarkup, /toolbar-group-label/)
+  assert.doesNotMatch(toolbarMarkup, /class="toolbar-section density-group"/)
+  assert.doesNotMatch(toolbarMarkup, /class="toolbar-section action-group"/)
+})
+
 async function loadClaimResponsePresentation() {
   const helperSource = readFileSync(resolve(frontendRoot, 'src/views/propagation/claimResponsePresentation.ts'), 'utf8')
   const { outputText } = ts.transpileModule(helperSource, {
@@ -372,9 +389,10 @@ test('renders all required semantic overlay fields without replacing observed pa
   assert.match(pathDrawer, /selectedClaimPathDetail\.chain\.supporting_posts/)
 })
 
-test('renders deterministic compact radial propagation nodes without visual connection lines', () => {
+test('renders deterministic compact radial propagation nodes with clockwise evidence spirals', () => {
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
   const labelUpdater = bodyOf(propagationView, 'updatePathGraphLabelsByZoom')
+  const evidenceLinks = bodyOf(propagationView, 'buildClockwiseSpiralEvidenceLinks')
 
   assert.match(graphOption, /const treeEdges = summary\?\.tree_edges \?\? \[\]/)
   assert.match(graphOption, /buildCompactRadialEvidencePositions/)
@@ -383,8 +401,15 @@ test('renders deterministic compact radial propagation nodes without visual conn
   assert.match(graphOption, /isIndependentObservation/)
   assert.doesNotMatch(graphOption, /layout_x/)
   assert.match(graphOption, /buildPrimaryEvidenceBackbone\(nodes, treeEdges, rootId\)/)
-  assert.match(graphOption, /links:\s*\[\]/)
-  assert.doesNotMatch(graphOption, /const graphEdges = \[\.\.\.backbone\.primaryEdges, \.\.\.backbone\.independentEdges\]/)
+  assert.match(graphOption, /const graphEdges = buildClockwiseSpiralEvidenceLinks\(nodes, treeEdges, fittedPositions, rootId\)/)
+  assert.match(graphOption, /links:\s*graphEdges/)
+  assert.doesNotMatch(graphOption, /links:\s*\[\]/)
+  assert.match(evidenceLinks, /treeEdges: DiffusionEdge\[\]/)
+  assert.match(evidenceLinks, /if \(!source \|\| !target \|\| source === target \|\| edge\.is_parallel_root \|\| edge\.is_synthetic\) continue/)
+  assert.match(evidenceLinks, /if \(targetDepth <= sourceDepth\) continue/)
+  assert.match(evidenceLinks, /const clockwiseCurveness = Math\.min\(0\.42, 0\.18 \+ \(sourceDepth \* 0\.035\)\)/)
+  assert.match(evidenceLinks, /curveness: clockwiseCurveness/)
+  assert.match(evidenceLinks, /clockwisePositionAngle/)
   assert.match(graphOption, /zoom:\s*0\.32/)
   assert.match(labelUpdater, /const expanded = Number\.isFinite\(zoom\) && zoom > 0\.7/)
   assert.match(labelUpdater, /show: expanded \|\| String\(node\.userId \|\| node\.id\) === rootId \|\| Number\(node\.category\) === 1/)

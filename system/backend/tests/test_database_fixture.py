@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.db import mysql
 from app.db.mysql import get_db
 from app.main import app
 
@@ -112,3 +113,20 @@ def test_database_session_lock_serializes_schema_setup(monkeypatch, tmp_path):
         next(lifecycle)
 
     assert calls[-1] == ("release", lock_path)
+
+
+def test_mysql_engine_disables_pre_ping_for_aiomysql_compatibility(monkeypatch):
+    observed = {}
+
+    def create_engine(url, **kwargs):
+        observed["url"] = url
+        observed.update(kwargs)
+        return object()
+
+    mysql._get_engine.cache_clear()
+    monkeypatch.setattr(mysql, "create_async_engine", create_engine)
+
+    mysql._get_engine()
+
+    assert observed["pool_pre_ping"] is False
+    mysql._get_engine.cache_clear()

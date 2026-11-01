@@ -122,6 +122,13 @@ class SemanticEnrichmentRuntime:
                     "platform": str(row.get("platform") or "unknown"),
                     "timestamp": str(row.get("timestamp") or ""),
                     "text": text,
+                    "source_url": str(
+                        row.get("source_url")
+                        or row.get("url")
+                        or row.get("post_url")
+                        or row.get("link")
+                        or ""
+                    ).strip(),
                     "sentiment": sentiment,
                     "stance": stance_rows[index],
                     "keywords": [],

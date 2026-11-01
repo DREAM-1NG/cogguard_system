@@ -15,6 +15,9 @@ import type {
   ReviewRequestCreate,
   ReviewRequestReceipt,
   ReviewAudit,
+  CountermeasureReport,
+  StudentAssessment,
+  StudentReassessmentReceipt,
 } from '@/types/reviewCase'
 
 interface ApiEnvelope<T> {
@@ -61,6 +64,31 @@ export function getReviewCaseEvidence(
 export function getReviewAudit(caseId: string) {
   return reviewCaseRequest.get<unknown, ApiEnvelope<ReviewAudit>>(
     `/${encodeURIComponent(caseId)}/teacher-audit`,
+  )
+}
+
+export function getStudentAssessment(caseId: string) {
+  return reviewCaseRequest.get<unknown, ApiEnvelope<StudentAssessment>>(
+    `/${encodeURIComponent(caseId)}/student-assessment`,
+  )
+}
+
+export function reassessStudent(caseId: string) {
+  return reviewCaseRequest.post<unknown, ApiEnvelope<StudentReassessmentReceipt>>(
+    `/${encodeURIComponent(caseId)}/student-reassess`,
+  )
+}
+
+export function getCountermeasureReport(caseId: string) {
+  return reviewCaseRequest.get<unknown, ApiEnvelope<CountermeasureReport>>(
+    `/${encodeURIComponent(caseId)}/countermeasure-report`,
+  )
+}
+
+export function downloadCountermeasureMarkdown(caseId: string) {
+  return reviewCaseRequest.get(
+    `/${encodeURIComponent(caseId)}/countermeasure-report.md`,
+    { responseType: 'blob' },
   )
 }
 

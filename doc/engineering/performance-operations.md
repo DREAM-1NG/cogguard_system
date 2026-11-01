@@ -26,7 +26,37 @@ contracts:
 6. cache immutable, versioned query projections behind existing API endpoints;
 7. return the selected review evidence group as a cursor-paginated projection
    instead of serializing the complete case snapshot;
-8. measure the remaining product-level work before changing business code.
+8. serve the linked Semantic Evidence Workspace as a compact, versioned
+   projection instead of sending the complete semantic artifact to the browser;
+9. measure the remaining product-level work before changing business code.
+
+## Semantic Evidence Workspace Projection
+
+`GET /api/v2/analysis/events/{event_id}/semantic/workspace` is the bounded
+read path for the single Event Review semantic workspace. A new semantic run
+persists a Semantic Page Read Model while the complete artifact is in memory.
+The model carries only its source SHA-256, snapshot fingerprint, aggregate
+facets, bounded cross-facet relations, and one initial traceable page capped at
+40 records. It never contains raw `layers`.
+
+An unfiltered workspace validates the compact model before returning it, so the
+browser issues one first-load request rather than five view requests. A selected
+facet is reprojected on the server from the same verified immutable source
+artifact. Its response still contains only linked aggregates and one paginated
+traceable page. The result cache key includes the event, run, snapshot,
+artifact fingerprint, normalized filters, and pagination; it never skips
+freshness validation. Legacy `views/{view}` endpoints remain compatibility
+paths for internal consumers, while historical UI URLs redirect to the
+workspace. No live before/after latency claim is recorded until an authenticated
+browser trace measures response sizes and settled times.
+
+The workspace lookup first uses the indexed `analysis_runs.event_id` column and
+then reads only exact semantic artifact roots for that event. A successful
+source-freshness verification is cached for at most 15 seconds; the first
+request after expiry rebuilds the current event snapshot and remains fail-closed
+on a fingerprint mismatch. Filtered projections are keyed by event, run,
+snapshot, source artifact hash, normalized filters, and page. A cache hit does
+not read the complete semantic artifact.
 
 ## Delivery Profile
 
@@ -105,6 +135,31 @@ The plan is build-manifest-derived rather than hash-name-derived, so it stays
 correct after Vite changes content hashes. Tests fail the build if a heavy graph
 chunk leaks into the idle preload set. This is resource preparation only: it
 does not pre-run a route, make authenticated API calls, or mutate a case.
+
+### Asynchronous UI Components
+
+`system/frontend/src/ui/antDesignComponents.ts` preserves the existing global
+`a-*` template vocabulary while registering each Ant Design implementation as
+an asynchronous component. The startup entry no longer synchronously imports
+the full registered component set; a component implementation is requested
+only when its template renders. `vite.config.ts` keeps the explicit Three.js
+graph groups outside the static layout and dashboard imports.
+
+The dense Semantic Evidence Workspace is an explicit exception to the
+per-component registry: it statically imports its small, known control set
+into one bounded `semantic-workspace-ui` feature chunk. This prevents a single
+above-the-fold workspace from waiting on many independent async component
+resolutions while still keeping the full Ant Design set out of the application
+startup chunk. Its word cloud is bounded to 32 high-frequency terms, and
+below-the-fold evidence sections use `content-visibility` so their layout and
+paint do not delay the initial analyst view. These are rendering-boundary
+measures, not a substitute for an authenticated settled-time trace.
+
+The build verifier remains the acceptance gate: every JavaScript file must be
+at most 1 MB and the authenticated idle preload manifest must exclude Three.js
+and graph-layout assets. This controls download boundaries, not settled-time:
+record a separate authenticated browser trace before making a page-load latency
+claim.
 
 ### Verify Static Delivery
 
@@ -565,3 +620,16 @@ demonstration navigation; it was intentionally excluded from this run.
    restart warmup, but a continuously ingesting deployment needs an explicit
    retention policy or a bounded Redis eviction configuration before it can be
    treated as a long-running operational cache.
+
+## Review Workbench Deferred Projections (2026-08-17)
+
+The Event Review overview no longer requests evidence or semantic artifact data
+as part of the initial case-detail request. Snapshot-bound Student assessment,
+Teacher audit, governance reference, and Countermeasure Report calls are
+deferred until the analyst opens the appropriate workbench panel or the activity
+stream reports a related completion/failure event. This keeps first paint
+independent of semantic-artifact and audit-provider latency.
+
+No authenticated browser timing or payload-size measurement is recorded for
+this change. Treat the boundary as an implementation constraint, not a
+performance claim, until a signed-in desktop/mobile trace is captured.

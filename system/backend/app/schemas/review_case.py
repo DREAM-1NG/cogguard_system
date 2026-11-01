@@ -66,6 +66,14 @@ class CaseActivityType(StrEnum):
     DECISION_CONFIRMED = "decision_confirmed"
     CORRECTION_RECORDED = "correction_recorded"
     RECONFIRMATION_REQUIRED = "reconfirmation_required"
+    STUDENT_ASSESSED = "student_assessed"
+    TEACHER_REVIEW_FAILED = "teacher_review_failed"
+    COUNTERMEASURE_REPORT_AVAILABLE = "countermeasure_report_available"
+
+
+class ReviewTask(StrEnum):
+    INTERPERSONAL_HARM = "interpersonal_harm"
+    CLAIM_DECEPTION = "claim_deception"
 
 
 class ProductContract(BaseModel):
@@ -139,6 +147,48 @@ class TeacherAuditRationale(ProductContract):
     citation_coverage: float | None = Field(default=None, ge=0, le=1)
 
 
+class TeacherAuditGovernanceReference(ProductContract):
+    """A governance reference actually persisted with the current Teacher audit."""
+
+    reference_id: str = Field(..., min_length=1, max_length=256)
+    platform: str = Field(default="", max_length=256)
+    title: str = Field(default="", max_length=512)
+    url: str | None = Field(default=None, max_length=2048)
+    reference_type: str = Field(default="", max_length=64)
+    governance_use: str = Field(default="", max_length=512)
+
+
+class TeacherAuditGovernance(ProductContract):
+    """Read-only governance guidance captured during the current Teacher run."""
+
+    available: bool = False
+    category_id: str = Field(default="", max_length=128)
+    category: str = Field(default="", max_length=256)
+    recommended_actions: list[str] = Field(default_factory=list, max_length=20)
+    human_confirmation_items: list[str] = Field(default_factory=list, max_length=20)
+    references: list[TeacherAuditGovernanceReference] = Field(default_factory=list, max_length=50)
+
+
+class TeacherAuditSelectionItem(ProductContract):
+    """One persisted event post actually included in a Teacher audit."""
+
+    post_id: str = Field(..., min_length=1, max_length=256)
+    platform: str = Field(default="", max_length=64)
+    author_name: str = Field(default="", max_length=128)
+    excerpt: str = Field(default="", max_length=600)
+    reposts: int = Field(default=0, ge=0)
+    likes: int = Field(default=0, ge=0)
+    comments: int = Field(default=0, ge=0)
+
+
+class TeacherAuditSelection(ProductContract):
+    """Selection provenance, separate from the analytical conclusion."""
+
+    source: str = Field(default="", max_length=64)
+    criteria: list[str] = Field(default_factory=list, max_length=6)
+    items: list[TeacherAuditSelectionItem] = Field(default_factory=list, max_length=20)
+
+
 class TeacherAudit(ProductContract):
     """Read-only audit projection for the analyst-triggered Teacher review."""
 
@@ -158,7 +208,47 @@ class TeacherAudit(ProductContract):
     sources: list[TeacherAuditSource] = Field(default_factory=list, max_length=100)
     queries: list[str] = Field(default_factory=list, max_length=100)
     rationale: TeacherAuditRationale = Field(default_factory=TeacherAuditRationale)
+    governance: TeacherAuditGovernance = Field(default_factory=TeacherAuditGovernance)
+    selection: TeacherAuditSelection = Field(default_factory=TeacherAuditSelection)
     quality: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=30)
+
+
+class StudentAxisAssessment(ProductContract):
+    task: ReviewTask
+    status: str = Field(..., min_length=1, max_length=32)
+    conclusion: ReviewConclusion | None = None
+    risk_score: float | None = Field(default=None, ge=0, le=1)
+    threshold: float | None = Field(default=None, ge=0, le=1)
+    rationale: str = Field(default="", max_length=800)
+
+
+class StudentAssessment(ProductContract):
+    case_id: str = Field(..., min_length=1, max_length=128)
+    snapshot_id: str | None = Field(default=None, max_length=128)
+    status: str = Field(..., min_length=1, max_length=32)
+    assessed_at: datetime | None = None
+    axes: list[StudentAxisAssessment] = Field(default_factory=list, max_length=2)
+
+
+class StudentReassessmentReceipt(ProductContract):
+    case_id: str = Field(..., min_length=1, max_length=128)
+    status: str = Field(..., min_length=1, max_length=32)
+    message: str = Field(..., min_length=1, max_length=1000)
+
+
+class CountermeasureReport(ProductContract):
+    case_id: str = Field(..., min_length=1, max_length=128)
+    snapshot_id: str | None = Field(default=None, max_length=128)
+    teacher_audit_id: str | None = Field(default=None, max_length=128)
+    status: str = Field(..., min_length=1, max_length=32)
+    reason: str = Field(default="", max_length=800)
+    risk_summary: str = Field(default="", max_length=1200)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=50)
+    policy_refs: list[str] = Field(default_factory=list, max_length=50)
+    recommended_actions: list[str] = Field(default_factory=list, max_length=12)
+    response_draft: str = Field(default="", max_length=2400)
+    limitations: list[str] = Field(default_factory=list, max_length=12)
+    quality_gate: bool = False
 
 
 class ConfirmedDecision(ProductContract):
@@ -253,6 +343,9 @@ class ReviewCaseEvidence(ProductContract):
 class ReviewRequestCreate(ProductContract):
     reason: str = Field(..., min_length=1, max_length=4000)
     evidence_refs: list[str] = Field(default_factory=list, max_length=100)
+    review_tasks: list[ReviewTask] = Field(
+        default_factory=lambda: [ReviewTask.INTERPERSONAL_HARM], min_length=1, max_length=2
+    )
 
 
 class ReviewRequestReceipt(ProductContract):
@@ -352,7 +445,20 @@ __all__ = [
     "ReviewCaseList",
     "ReviewCaseSummary",
     "ReviewConclusion",
+    "ReviewTask",
     "ReviewRequestCreate",
     "ReviewRequestReceipt",
     "ReviewUrgency",
+    "TeacherAudit",
+    "TeacherAuditGovernance",
+    "TeacherAuditGovernanceReference",
+    "TeacherAuditRationale",
+    "TeacherAuditSelection",
+    "TeacherAuditSelectionItem",
+    "TeacherAuditSource",
+    "TeacherAuditStage",
+    "StudentAxisAssessment",
+    "StudentAssessment",
+    "StudentReassessmentReceipt",
+    "CountermeasureReport",
 ]

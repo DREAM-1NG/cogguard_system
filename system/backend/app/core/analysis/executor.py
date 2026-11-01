@@ -10,8 +10,9 @@ from app.core.analysis.coordination_runtime import (
     CrossPlatformResolver,
     build_coordination_group_label_cases,
 )
-from app.core.analysis.registry import AnalysisRegistry
+from app.core.analysis.registry import AnalysisRegistry, SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY
 from app.core.analysis.runtime import InternalStudentRuntime, InternalTeacherJobPort
+from app.core.semantic.page_projection import build_semantic_page_read_model
 from app.core.semantic.runtime import ModelWeightsBlockedError, SemanticEnrichmentRuntime, VerifiedPropagationArtifact
 from app.services.coordination_group_label_case_service import persist_coordination_group_label_cases
 
@@ -116,6 +117,20 @@ class AnalysisExecutor:
                 artifact_key=f"stage:{stage}:result",
                 payload=result,
             )
+            semantic_page_read_model_ref: dict[str, Any] | None = None
+            if stage == "semantic_enrichment" and artifact_ref.get("stored"):
+                source_artifact_sha256 = str(artifact_ref.get("payload_sha256") or "").strip()
+                if source_artifact_sha256 and isinstance(result, dict):
+                    semantic_page_read_model = build_semantic_page_read_model(
+                        result,
+                        source_artifact_sha256=source_artifact_sha256,
+                    )
+                    if str(semantic_page_read_model.get("snapshot_fingerprint") or "").strip():
+                        semantic_page_read_model_ref = await self.registry.save_run_artifact(
+                            run_id=run_id,
+                            artifact_key=SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY,
+                            payload=semantic_page_read_model,
+                        )
             if stage == "propagation_analysis":
                 verified = await self._load_verified_propagation_artifact(
                     run_id=run_id,
@@ -130,6 +145,10 @@ class AnalysisExecutor:
                 "result_artifact": _artifact_event_ref(artifact_ref),
                 "result_summary": result_summary,
             }
+            if semantic_page_read_model_ref is not None:
+                artifact_manifest["stages"][stage]["page_read_model_artifact"] = _artifact_event_ref(
+                    semantic_page_read_model_ref
+                )
             await self.registry.update_artifact_manifest(run_id, artifact_manifest)
             await self.registry.append_run_event(
                 run_id,

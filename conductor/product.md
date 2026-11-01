@@ -30,7 +30,11 @@ diagnostic concepts, not primary product copy.
 - Propagation Analysis provides cutoff-bound Macro scale/trend estimates and closed-world next-hop reactivation ranking, with candidate coverage, identity-mapping, and availability status carried in the result.
 - Coordination workspace now surfaces cross-platform resolution, evidence-constrained group discovery, four-dimensional characterization, and SocGFM-backed group-level detection evidence without exposing shadow classifier or archive replay scores as the primary result.
 - Historical archive runs with persisted member predictions, but no stored group projection, are reconstructed into traceable group evidence hints at read time. A missing prediction remains explicitly unavailable; no heuristic verdict is created, and high-risk prompts remain analyst review inputs.
-- Semantic Evidence Assistance for the event-review workspace, with model/runtime state remaining diagnostic.
+- One linked Semantic Evidence Workspace under `/risk/semantic-evidence`; its
+  source-hash-pinned read model returns bounded aggregate relations and one
+  traceable page, while selected facets are reprojected on the server. The
+  Review overview remains limited to case evidence and analyst decision work,
+  with model/runtime state remaining diagnostic.
 - Crawl Evidence Workbench delivery is in progress: grouped analyst retrieval
   terms, selected-job scoped content reading, and authenticated local image or
   video preview will extend the existing crawler without changing its request

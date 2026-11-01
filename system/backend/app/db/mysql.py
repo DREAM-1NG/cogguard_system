@@ -16,7 +16,10 @@ from app.config import settings
 
 @lru_cache(maxsize=1)
 def _get_engine():
-    return create_async_engine(settings.mysql_url, echo=settings.BACKEND_DEBUG, pool_pre_ping=True)
+    # aiomysql's asynchronous ping requires an argument, while SQLAlchemy's
+    # pre-ping hook invokes it without one. Connection errors remain handled
+    # by the session transaction path and pool recycling.
+    return create_async_engine(settings.mysql_url, echo=settings.BACKEND_DEBUG, pool_pre_ping=False)
 
 
 @lru_cache(maxsize=1)

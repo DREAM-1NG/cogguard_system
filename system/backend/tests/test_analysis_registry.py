@@ -35,6 +35,7 @@ class FakeCollection:
         self.rows = rows or []
         self.documents: dict[str, dict[str, Any]] = {}
         self.find_calls: list[dict[str, Any]] = []
+        self.find_one_calls: list[dict[str, Any]] = []
         self.update_calls: list[dict[str, Any]] = []
 
     def find(self, query: dict[str, Any], projection: dict[str, int] | None = None) -> FakeCursor:
@@ -62,11 +63,18 @@ class FakeCollection:
             self.documents[document_id] = dict(update["$setOnInsert"])
 
     async def find_one(self, query: dict[str, Any], projection: dict[str, int] | None = None):
-        snapshot_id = query.get("snapshot_id")
-        if snapshot_id is None:
+        self.find_one_calls.append({"query": query, "projection": projection})
+        document_id = query.get("snapshot_id") or query.get("artifact_id")
+        if document_id is None:
             return None
-        document = self.documents.get(str(snapshot_id))
-        return dict(document) if document is not None else None
+        document = self.documents.get(str(document_id))
+        if document is not None:
+            return dict(document)
+        for row in self.rows:
+            key = row.get("snapshot_id") or row.get("artifact_id")
+            if str(key) == str(document_id):
+                return dict(row)
+        return None
 
 
 class FakeAnalysisStore:
@@ -128,6 +136,9 @@ class FakeAnalysisStore:
 
     async def get_run(self, run_id: str) -> dict[str, Any] | None:
         return self.runs.get(run_id)
+
+    async def list_runs_for_event(self, *, event_id: str) -> list[dict[str, Any]]:
+        return [run for run in self.runs.values() if run.get("event_id") == event_id]
 
     async def update_run_status(
         self,
@@ -415,11 +426,20 @@ def test_registry_lists_only_target_event_semantic_artifact_roots_in_newest_run_
         candidates = await registry.list_semantic_artifact_candidates("event_target")
 
         assert [candidate["run_id"] for candidate in candidates] == ["run_target_new", "run_target_old"]
-        assert artifacts.find_calls == [
+        assert artifacts.find_calls == []
+        assert artifacts.find_one_calls == [
             {
-                "query": {"artifact_key": semantic_key},
-                "projection": {"_id": 0, "run_id": 1, "created_at": 1, "root_artifact_id": 1},
-            }
+                "query": {"artifact_id": f"run_target_old:{semantic_key}"},
+                "projection": {"_id": 0, "created_at": 1},
+            },
+            {
+                "query": {"artifact_id": f"run_target_new:{semantic_key}"},
+                "projection": {"_id": 0, "created_at": 1},
+            },
+            {
+                "query": {"artifact_id": f"run_chunk:{semantic_key}"},
+                "projection": {"_id": 0, "created_at": 1},
+            },
         ]
 
     asyncio.run(scenario())

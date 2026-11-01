@@ -10,6 +10,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.config import settings
+from app.core.security import create_access_token, hash_password
 from app.models.task import CrawlJob
 from app.models.user import User
 from app.schemas.crawl import CrawlDataQuery
@@ -66,6 +67,32 @@ async def test_posts_query_is_scoped_to_selected_crawl_job(monkeypatch):
     assert total == 1
     assert collection.count_query == {"crawl_job_id": 42}
     assert collection.find_query == {"crawl_job_id": 42}
+
+
+def test_post_local_media_summary_exposes_only_availability_metadata():
+    post = {"platform": "douyin", "post_id": "post-9", "content": "video"}
+    local_items = [
+        {
+            "job_id": 14,
+            "item_index": 0,
+            "media_type": "video",
+            "filename": "clip.mp4",
+            "preview_url": "/api/v1/crawl/media-downloads/14/items/0/content",
+            "path": "G:/private/clip.mp4",
+        },
+        {
+            "job_id": 14,
+            "item_index": 1,
+            "media_type": "image",
+            "filename": "cover.jpg",
+        },
+    ]
+
+    enriched = crawl_service.with_local_media_summary(post, local_items)
+
+    assert enriched["local_media"] == {"available_count": 2, "types": ["image", "video"]}
+    assert "path" not in enriched["local_media"]
+    assert "preview_url" not in enriched["local_media"]
 
 
 @pytest.mark.asyncio
@@ -245,3 +272,87 @@ async def test_authorized_video_content_supports_range_requests(
     assert response.headers["content-range"] == "bytes 2-5/10"
     assert response.headers["content-type"].startswith("video/mp4")
     assert response.content == b"2345"
+
+
+@pytest.mark.asyncio
+@needs_db
+async def test_administrator_can_list_and_stream_completed_media_from_another_user(
+    setup_database,
+    auth_client: AsyncClient,
+    monkeypatch,
+    tmp_path: Path,
+):
+    media_root = tmp_path / "media"
+    media_file = media_root / "douyin" / "post-9" / "clip.mp4"
+    media_file.parent.mkdir(parents=True)
+    media_file.write_bytes(b"0123456789")
+    manifest_path = media_root / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "items": [
+                    {
+                        "platform": "douyin",
+                        "post_id": "post-9",
+                        "media_type": "video",
+                        "local_path": str(media_file),
+                        "status": "downloaded",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(settings, "MEDIA_DOWNLOAD_ROOT", str(media_root))
+
+    async with test_session_factory() as session:
+        owner_id = (
+            await session.execute(select(User.id).where(User.username == "testuser"))
+        ).scalar_one()
+        administrator = User(
+            username="media-admin",
+            email="media-admin@example.com",
+            hashed_password=hash_password("adminpass123"),
+            role="admin",
+        )
+        job = CrawlJob(
+            job_type="media_download",
+            platform="media_download",
+            params_json="{}",
+            status="completed",
+            progress=100,
+            created_by=owner_id,
+            result_summary=json.dumps({"manifest_path": str(manifest_path)}),
+        )
+        incomplete_job = CrawlJob(
+            job_type="media_download",
+            platform="media_download",
+            params_json="{}",
+            status="running",
+            progress=80,
+            created_by=owner_id,
+            result_summary=json.dumps({"manifest_path": str(manifest_path)}),
+        )
+        session.add_all([administrator, job, incomplete_job])
+        await session.commit()
+        await session.refresh(administrator)
+        await session.refresh(job)
+
+    auth_client.headers["Authorization"] = (
+        f"Bearer {create_access_token(administrator.id, administrator.role)}"
+    )
+    listing = await auth_client.get("/api/v1/crawl/posts/douyin/post-9/media")
+
+    assert listing.status_code == 200
+    items = listing.json()["data"]["items"]
+    assert len(items) == 1
+    assert items[0]["job_id"] == job.id
+
+    content = await auth_client.get(
+        items[0]["preview_url"],
+        headers={"Range": "bytes=2-5"},
+    )
+
+    assert content.status_code == 206
+    assert content.headers["content-range"] == "bytes 2-5/10"
+    assert content.content == b"2345"

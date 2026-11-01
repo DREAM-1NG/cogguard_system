@@ -10,54 +10,96 @@
     </PageHeader>
 
     <div class="action-bar">
-      <section class="toolbar-section filter-group" aria-label="事件范围">
-        <span class="toolbar-group-label">事件范围</span>
-        <a-space wrap>
-          <a-input v-model:value="eventId" size="small" placeholder="事件 ID" style="width: 220px" allow-clear />
-          <a-input v-model:value="platform" size="small" placeholder="平台，可选" style="width: 140px" allow-clear />
-          <a-date-picker
-            v-model:value="observedUntil"
-            size="small"
-            show-time
-            value-format="YYYY-MM-DDTHH:mm:ss"
-            placeholder="观测截止时间"
-            style="width: 208px"
-            allow-clear
-          />
-          <a-select v-model:value="observationRatio" size="small" style="width: 136px">
-            <a-select-option :value="0.1">观测阶段：10%</a-select-option>
-            <a-select-option :value="0.3">观测阶段：30%</a-select-option>
-            <a-select-option :value="0.5">观测阶段：50%</a-select-option>
-          </a-select>
-        </a-space>
-      </section>
-      <section v-if="activeTab === 'path'" class="toolbar-section density-group" aria-label="显示密度">
-        <span class="toolbar-group-label">显示密度</span>
-        <a-slider
-          v-model:value="diffusionPendingNodeLimit"
-          class="path-node-slider"
-          :min="diffusionSliderMin"
-          :max="diffusionSliderMax"
-          :step="diffusionSliderStep"
-          :tooltipOpen="false"
-          @change="handleDiffusionLimitChange"
-          @afterChange="handleDiffusionLimitCommit"
-        />
-        <span class="path-node-control-count">{{ diffusionVisibleCount }} / {{ diffusionTotalNodes }}</span>
-        <a-button size="small" type="link" @click="showFullDiffusionGraph">全量</a-button>
-      </section>
-      <section class="toolbar-section action-group" aria-label="操作">
-        <span class="toolbar-group-label">操作</span>
-        <a-space wrap>
-          <a-button type="primary" @click="handleAnalyze" :loading="analyzing">
-            同步传播结果
+      <div class="toolbar-primary" aria-label="传播范围与筛选">
+        <a-popover v-model:open="eventPanelOpen" trigger="click" placement="bottomLeft">
+          <template #content>
+            <div class="event-switcher-panel">
+              <label class="filter-field" for="propagation-event-id">
+                <span>事件标识</span>
+                <a-input
+                  id="propagation-event-id"
+                  v-model:value="eventId"
+                  size="small"
+                  placeholder="输入事件标识"
+                  allow-clear
+                  @press-enter="applyEventScope"
+                />
+              </label>
+              <a-button type="primary" size="small" block :loading="analyzing" @click="applyEventScope">
+                应用事件
+              </a-button>
+            </div>
+          </template>
+          <a-button type="text" class="event-trigger" aria-label="选择事件">
+            <span>事件：{{ eventDisplayName }}</span>
+            <span class="toolbar-caret" aria-hidden="true">▾</span>
           </a-button>
-          <a-button @click="handlePredict" :loading="predicting" :disabled="!eventId.trim()">
-            刷新趋势预测
+        </a-popover>
+
+        <a-popover v-model:open="filterPanelOpen" trigger="click" placement="bottomLeft">
+          <template #content>
+            <div class="propagation-filter-panel">
+              <section class="filter-panel-section" aria-label="数据范围">
+                <span class="filter-panel-heading">数据范围</span>
+                <label class="filter-field">
+                  <span>平台</span>
+                  <a-input v-model:value="platform" size="small" placeholder="全部平台" allow-clear />
+                </label>
+                <label class="filter-field">
+                  <span>观测截止时间</span>
+                  <a-date-picker
+                    v-model:value="observedUntil"
+                    size="small"
+                    show-time
+                    value-format="YYYY-MM-DDTHH:mm:ss"
+                    placeholder="不设截止时间"
+                    allow-clear
+                  />
+                </label>
+                <label class="filter-field">
+                  <span>观测阶段</span>
+                  <a-select v-model:value="observationRatio" size="small">
+                    <a-select-option :value="0.1">10%</a-select-option>
+                    <a-select-option :value="0.3">30%</a-select-option>
+                    <a-select-option :value="0.5">50%</a-select-option>
+                  </a-select>
+                </label>
+              </section>
+
+              <section v-if="activeTab === 'path'" class="filter-panel-section display-settings" aria-label="显示设置">
+                <div class="filter-panel-heading-row">
+                  <span class="filter-panel-heading">显示设置</span>
+                  <span class="path-node-control-count">图中节点 {{ diffusionVisibleCount }} / {{ diffusionTotalNodes }}</span>
+                </div>
+                <a-slider
+                  v-model:value="diffusionPendingNodeLimit"
+                  class="path-node-slider"
+                  :min="diffusionSliderMin"
+                  :max="diffusionSliderMax"
+                  :step="diffusionSliderStep"
+                  :tooltipOpen="false"
+                  @change="handleDiffusionLimitChange"
+                  @afterChange="handleDiffusionLimitCommit"
+                />
+                <a-button size="small" type="link" class="show-full-button" @click="showFullDiffusionGraph">显示全部节点</a-button>
+              </section>
+
+              <section class="filter-panel-actions" aria-label="分析操作">
+                <a-button type="primary" size="small" block :loading="analyzing" @click="applyScopeFilters">
+                  同步传播结果
+                </a-button>
+                <a-button size="small" block :loading="predicting" :disabled="!eventId.trim()" @click="refreshPredictionFromToolbar">
+                  刷新趋势预测
+                </a-button>
+                <span v-if="lastSyncedAt" class="sync-hint">最近同步：{{ lastSyncedAt }}</span>
+              </section>
+            </div>
+          </template>
+          <a-button class="filter-trigger" aria-label="打开传播筛选">
+            筛选
           </a-button>
-        </a-space>
-        <span v-if="lastSyncedAt" class="sync-hint">最近同步：{{ lastSyncedAt }}</span>
-      </section>
+        </a-popover>
+      </div>
     </div>
 
     <a-alert
@@ -787,6 +829,9 @@ import {
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
 const PROPAGATION_ANALYSIS_ARTIFACT_KEY = 'stage:propagation_analysis:result'
 const CLAIM_RESPONSE_DEFAULT_PLATFORMS = ['weibo', 'douyin', 'xhs', 'news']
+const EVENT_DISPLAY_NAMES: Record<string, string> = {
+  trump_visit_2026_05_21: '特朗普访华',
+}
 
 type KeyRoleItem = {
   account_id: string
@@ -1497,6 +1542,8 @@ const eventId = ref(DEFAULT_EVENT_ID)
 const platform = ref('')
 const observedUntil = ref<string | undefined>()
 const observationRatio = ref(0.5)
+const eventPanelOpen = ref(false)
+const filterPanelOpen = ref(false)
 const activeTab = ref('path')
 const selectedObjectId = ref('')
 const timelineFocusPostId = ref('')
@@ -1525,6 +1572,11 @@ let evidenceTimelineRequestGeneration = 0
 let semanticRequestGeneration = 0
 let claimResponseRequestGeneration = 0
 let claimResponsePendingScope = ''
+
+const eventDisplayName = computed(() => {
+  const normalized = eventId.value.trim()
+  return EVENT_DISPLAY_NAMES[normalized] || normalized || '选择事件'
+})
 
 type PropagationChartInstance = Pick<echarts.ECharts, 'getDom' | 'isDisposed' | 'resize'>
 
@@ -2901,6 +2953,68 @@ function buildCompactRadialEvidencePositions(
   return positions
 }
 
+function clockwisePositionAngle(position: { x: number; y: number }) {
+  const startAngle = -Math.PI / 2
+  const angle = Math.atan2(position.y, position.x)
+  return (angle - startAngle + (Math.PI * 2)) % (Math.PI * 2)
+}
+
+function buildClockwiseSpiralEvidenceLinks(
+  nodes: DiffusionNode[],
+  treeEdges: DiffusionEdge[],
+  positions: Map<string, { x: number; y: number; layer: number }>,
+  rootId: string,
+) {
+  const nodeById = new Map(nodes.map((node) => [String(node.id), node]))
+  const linksByKey = new Map<string, {
+    source: string
+    target: string
+    value: number
+    lineStyle: { curveness: number; color: string; width: number; opacity: number }
+  }>()
+
+  for (const edge of treeEdges) {
+    const source = String(edge.source || '')
+    const target = String(edge.target || '')
+    if (!source || !target || source === target || edge.is_parallel_root || edge.is_synthetic) continue
+    const sourceNode = nodeById.get(source)
+    const targetNode = nodeById.get(target)
+    const sourcePosition = positions.get(source)
+    const targetPosition = positions.get(target)
+    if (!sourceNode || !targetNode || !sourcePosition || !targetPosition) continue
+
+    const sourceDepth = nodeConnectedDepth(sourceNode, rootId)
+    const targetDepth = nodeConnectedDepth(targetNode, rootId)
+    if (targetDepth <= sourceDepth) continue
+    const sourceRadius = Math.hypot(sourcePosition.x, sourcePosition.y)
+    const targetRadius = Math.hypot(targetPosition.x, targetPosition.y)
+    if (targetRadius <= sourceRadius) continue
+
+    const clockwiseCurveness = Math.min(0.42, 0.18 + (sourceDepth * 0.035))
+    const key = `${source}->${target}`
+    linksByKey.set(key, {
+      source,
+      target,
+      value: Number(edge.weight ?? 1),
+      lineStyle: {
+        curveness: clockwiseCurveness,
+        color: edge.is_key_path ? '#38bdf8' : '#64748b',
+        width: edge.is_key_path ? 1.5 : 0.8,
+        opacity: edge.is_key_path ? 0.72 : 0.38,
+      },
+    })
+  }
+
+  return Array.from(linksByKey.values()).sort((left, right) => {
+    const leftSourceDepth = nodeConnectedDepth(nodeById.get(left.source)!, rootId)
+    const rightSourceDepth = nodeConnectedDepth(nodeById.get(right.source)!, rootId)
+    if (leftSourceDepth !== rightSourceDepth) return leftSourceDepth - rightSourceDepth
+    const leftAngle = clockwisePositionAngle(positions.get(left.target)!)
+    const rightAngle = clockwisePositionAngle(positions.get(right.target)!)
+    return leftAngle - rightAngle || left.source.localeCompare(right.source) || left.target.localeCompare(right.target)
+  })
+}
+
 function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption {
   const nodes = (summary?.visible_nodes ?? []).filter((node) => !isIndependentObservation(node))
   const treeEdges = summary?.tree_edges ?? []
@@ -2910,6 +3024,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
 
   const positions = buildCompactRadialEvidencePositions(nodes, backbone.primaryEdges, rootId)
   const fittedPositions = fitGraphPositions(positions, rootId)
+  const graphEdges = buildClockwiseSpiralEvidenceLinks(nodes, treeEdges, fittedPositions, rootId)
 
   const graphData = nodes.map((node) => {
     const id = String(node.id)
@@ -2978,7 +3093,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
           { name: '观察节点', itemStyle: { color: '#60a5fa' } },
         ],
         data: graphData,
-        links: [],
+        links: graphEdges,
         label: {
           color: '#eef6ff',
           fontSize: 10,
@@ -3498,6 +3613,16 @@ async function handleAnalyze() {
   await loadAnalysis(true)
 }
 
+async function applyEventScope() {
+  eventPanelOpen.value = false
+  await handleAnalyze()
+}
+
+async function applyScopeFilters() {
+  filterPanelOpen.value = false
+  await handleAnalyze()
+}
+
 function requestErrorMessage(error: unknown, fallback: string) {
   if (error && typeof error === 'object') {
     const response = (error as { response?: { data?: { detail?: unknown; message?: unknown } } }).response
@@ -3591,6 +3716,11 @@ async function handlePredict() {
       predicting.value = false
     }
   }
+}
+
+async function refreshPredictionFromToolbar() {
+  filterPanelOpen.value = false
+  await handlePredict()
 }
 
 async function loadCachedPrediction() {
@@ -3847,74 +3977,117 @@ onBeforeUnmount(() => {
 }
 
 .action-bar {
-  display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(240px, 0.6fr) auto;
-  align-items: end;
-  gap: 12px 16px;
+  display: flex;
+  align-items: center;
   margin-bottom: 12px;
-  padding: 10px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+}
+
+.toolbar-primary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.event-trigger,
+.filter-trigger {
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.event-trigger:hover,
+.event-trigger:focus-visible {
+  color: #0f5fa8;
+  background: #eef6ff;
+}
+
+.toolbar-caret {
+  margin-left: 5px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.filter-trigger {
+  border-color: #d7dee8;
   background: #ffffff;
 }
 
-.toolbar-section,
-.filter-group,
-.action-group {
-  min-width: 0;
+.filter-trigger:hover,
+.filter-trigger:focus-visible {
+  border-color: #91caff;
+  color: #0f5fa8;
 }
 
-.filter-group {
+.event-switcher-panel,
+.propagation-filter-panel {
+  width: min(320px, calc(100vw - 32px));
+}
+
+.event-switcher-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.propagation-filter-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.filter-panel-section {
+  display: grid;
+  gap: 8px;
+}
+
+.filter-panel-section + .filter-panel-section,
+.filter-panel-actions {
+  padding-top: 12px;
+  border-top: 1px solid #edf1f5;
+}
+
+.filter-panel-heading-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.density-group {
-  display: grid;
-  grid-template-columns: auto minmax(88px, 1fr) auto auto;
-  align-items: center;
-  gap: 8px;
-}
-
-.filter-group :deep(.ant-space) {
-  min-width: 0;
-  flex: 1;
-}
-
-.filter-group :deep(.ant-space-item) {
-  min-width: 0;
-}
-
-.toolbar-group-label {
-  flex: 0 0 auto;
-  color: #475569;
-  font-size: 14px;
+.filter-panel-heading {
+  color: #334155;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.4;
-  white-space: nowrap;
 }
 
-.action-group {
+.filter-field {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: flex-end;
-  justify-content: end;
-  gap: 4px 8px;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: #64748b;
+  font-size: 13px;
 }
 
-.action-group :deep(.ant-space) {
-  min-width: 0;
-  max-width: 100%;
-  justify-content: flex-end;
+.filter-field :deep(.ant-picker),
+.filter-field :deep(.ant-select) {
+  width: 100%;
+}
+
+.filter-panel-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.show-full-button {
+  justify-self: start;
+  padding-inline: 0;
 }
 
 .sync-hint {
-  grid-column: 2;
   color: #64748b;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.4;
-  text-align: right;
 }
 
 .analysis-card {

@@ -12,6 +12,10 @@ export type SemanticRecord = {
   platform: string
   date: string
   timestamp: string
+  text: string
+  authorId: string
+  sourceUrl: string | null
+  evidenceRef: string
   keywords: string[]
   topics: string[]
   sentiment: string
@@ -74,7 +78,9 @@ export type SemanticCommunitySummary = {
 
 const CLOUD_MIN_FONT_SIZE = 12
 const CLOUD_MAX_FONT_SIZE = 40
-const CLOUD_LIMIT = 50
+// The cloud is an at-a-glance evidence summary. Keeping this bounded makes
+// its collision layout fast enough for the first workspace paint.
+const CLOUD_LIMIT = 32
 
 export function createSemanticFilters(): SemanticFilters {
   return {
@@ -99,6 +105,10 @@ export function toSemanticRecords(artifact: Record<string, unknown>): SemanticRe
       platform: textValue(item.platform) || 'unknown',
       date: textValue(item.timestamp).slice(0, 10) || 'unknown',
       timestamp: textValue(item.timestamp) || 'unknown',
+      text: textValue(item.text),
+      authorId: textValue(item.author_id),
+      sourceUrl: textValue(item.source_url || item.sourceUrl || item.url) || null,
+      evidenceRef: `${textValue(item.platform) || 'unknown'}:${layer === 'posts' ? 'post' : 'comment'}:${textValue(item.id) || index}`,
       keywords: arrayValue(item.keywords)
         .map((keyword) => textValue(recordValue(keyword).term))
         .filter(Boolean),
@@ -136,11 +146,14 @@ export function filterSemanticRecords(
 }
 
 export function buildKeywordCloud(records: SemanticRecord[]): KeywordCloudItem[] {
-  const counts = countNamedValues(records.flatMap((record) => record.keywords))
-    .slice(0, CLOUD_LIMIT)
-  const minimum = counts[counts.length - 1]?.count || 0
-  const maximum = counts[0]?.count || 0
-  return counts.map((item) => ({
+  return buildKeywordCloudFromCounts(countNamedValues(records.flatMap((record) => record.keywords)))
+}
+
+export function buildKeywordCloudFromCounts(counts: SemanticCount[]): KeywordCloudItem[] {
+  const selected = counts.slice(0, CLOUD_LIMIT)
+  const minimum = selected[selected.length - 1]?.count || 0
+  const maximum = selected[0]?.count || 0
+  return selected.map((item) => ({
     term: item.label,
     count: item.count,
     fontSize: logarithmicFontSize(item.count, minimum, maximum),
@@ -180,6 +193,7 @@ function placeKeywordCloud(
   canvasHeight: number,
 ): KeywordCloudPlacement[] {
   const placements: KeywordCloudPlacement[] = []
+  const spatialIndex = new Map<string, KeywordCloudPlacement[]>()
 
   for (const [index, item] of items.entries()) {
     const rotation = cloudRotation(index)
@@ -189,9 +203,13 @@ function placeKeywordCloud(
       index,
       canvasWidth,
       canvasHeight,
-      placements,
+      spatialIndex,
     )
-    if (placement) placements.push({ ...item, rotation, ...placement })
+    if (placement) {
+      const placed = { ...item, rotation, ...placement }
+      placements.push(placed)
+      indexKeywordPlacement(spatialIndex, placed)
+    }
   }
 
   return placements
@@ -299,7 +317,8 @@ function logarithmicFontSize(value: number, minimum: number, maximum: number): n
 
 const CLOUD_LAYOUT_PADDING = 2
 const CLOUD_LAYOUT_GAP = 1
-const CLOUD_LAYOUT_MAX_STEPS = 8000
+const CLOUD_LAYOUT_MAX_STEPS = 1400
+const CLOUD_SPATIAL_CELL_SIZE = 64
 const CLOUD_GOLDEN_ANGLE = 2.399963229728653
 const CLOUD_ROTATIONS = [0, 0, -30, 30, 0, 90, 0, -90] as const
 
@@ -329,7 +348,7 @@ function findKeywordPlacement(
   index: number,
   canvasWidth: number,
   canvasHeight: number,
-  placements: KeywordCloudPlacement[],
+  spatialIndex: Map<string, KeywordCloudPlacement[]>,
 ): Omit<KeywordCloudPlacement, keyof KeywordCloudItem | 'rotation'> | null {
   const centerX = canvasWidth / 2
   const centerY = canvasHeight / 2
@@ -355,11 +374,49 @@ function findKeywordPlacement(
       || right > canvasWidth - CLOUD_LAYOUT_PADDING
       || bottom > canvasHeight - CLOUD_LAYOUT_PADDING
     ) continue
-    if (placements.some((item) => cloudBoundsOverlap(candidate, item))) continue
+    if (overlapsKeywordPlacement(candidate, spatialIndex)) continue
     return candidate
   }
 
   return null
+}
+
+function indexKeywordPlacement(
+  spatialIndex: Map<string, KeywordCloudPlacement[]>,
+  placement: KeywordCloudPlacement,
+): void {
+  for (const key of spatialCellKeys(placement)) {
+    const entries = spatialIndex.get(key)
+    if (entries) entries.push(placement)
+    else spatialIndex.set(key, [placement])
+  }
+}
+
+function overlapsKeywordPlacement(
+  candidate: { left: number; top: number; right: number; bottom: number },
+  spatialIndex: Map<string, KeywordCloudPlacement[]>,
+): boolean {
+  const checked = new Set<KeywordCloudPlacement>()
+  for (const key of spatialCellKeys(candidate)) {
+    for (const placement of spatialIndex.get(key) || []) {
+      if (checked.has(placement)) continue
+      checked.add(placement)
+      if (cloudBoundsOverlap(candidate, placement)) return true
+    }
+  }
+  return false
+}
+
+function spatialCellKeys(bounds: { left: number; top: number; right: number; bottom: number }): string[] {
+  const startX = Math.floor(bounds.left / CLOUD_SPATIAL_CELL_SIZE)
+  const endX = Math.floor(bounds.right / CLOUD_SPATIAL_CELL_SIZE)
+  const startY = Math.floor(bounds.top / CLOUD_SPATIAL_CELL_SIZE)
+  const endY = Math.floor(bounds.bottom / CLOUD_SPATIAL_CELL_SIZE)
+  const keys: string[] = []
+  for (let x = startX; x <= endX; x += 1) {
+    for (let y = startY; y <= endY; y += 1) keys.push(`${x}:${y}`)
+  }
+  return keys
 }
 
 function cloudBoundsOverlap(

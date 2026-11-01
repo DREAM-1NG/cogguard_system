@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Mapping
 
 from app.core.analysis import EventSnapshot, TimeWindow
 from app.schemas.review_case import (
@@ -96,6 +96,49 @@ def project_analysis_results(
         disposition=disposition,
         action_required=action,
         preliminary_finding=preliminary,
+        business_summary=business,
+    )
+
+
+def project_student_result(
+    *,
+    snapshot: EventSnapshot,
+    student: dict[str, Any],
+    existing_business_summary: Mapping[str, Any] | None,
+) -> AnalysisProjection:
+    """Project a Student-only run without discarding other analysis summaries.
+
+    An explicit Student reassessment is intentionally narrower than the
+    automatic core analysis run.  It may refresh the preliminary finding, but
+    it must not replace previously persisted Coordination, Propagation, or
+    Teacher-facing business records with empty placeholder values.
+    """
+
+    conclusion = _review_conclusion(student)
+    sufficiency = _evidence_sufficiency(snapshot, student)
+    urgency = _review_urgency(student)
+    disposition = _disposition(conclusion, urgency)
+    action = (
+        ActionRequired.ADD_EVIDENCE
+        if sufficiency != EvidenceSufficiency.SUFFICIENT or bool(student.get("abstain"))
+        else ActionRequired.CONFIRM_DECISION
+    )
+    business = _student_business_summary(
+        snapshot=snapshot,
+        student=student,
+        existing_business_summary=existing_business_summary,
+    )
+    return AnalysisProjection(
+        conclusion=conclusion,
+        evidence_sufficiency=sufficiency,
+        urgency=urgency,
+        disposition=disposition,
+        action_required=action,
+        preliminary_finding={
+            "conclusion": conclusion.value,
+            "rationale": _student_rationale(student, conclusion),
+            "key_evidence_refs": _student_evidence_refs(student),
+        },
         business_summary=business,
     )
 
@@ -285,6 +328,35 @@ def _propagation_summary(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _student_business_summary(
+    *,
+    snapshot: EventSnapshot,
+    student: dict[str, Any],
+    existing_business_summary: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Update only Student-dependent fields in a persisted business summary."""
+
+    existing = dict(existing_business_summary or {})
+    defaults = _empty_business_summary()
+    coordination = existing.get("coordination")
+    propagation = existing.get("propagation")
+    return {
+        **existing,
+        "sufficiency_reasons": _sufficiency_reasons(snapshot, student),
+        "missing_evidence": _missing_evidence(snapshot, student),
+        "coordination": (
+            dict(coordination)
+            if isinstance(coordination, Mapping)
+            else defaults["coordination"]
+        ),
+        "propagation": (
+            dict(propagation)
+            if isinstance(propagation, Mapping)
+            else defaults["propagation"]
+        ),
+    }
+
+
 def _sufficiency_reasons(snapshot: EventSnapshot, student: dict[str, Any]) -> list[str]:
     reasons: list[str] = []
     if snapshot.quality_report.issues:
@@ -387,5 +459,6 @@ __all__ = [
     "AnalysisProjection",
     "derive_analysis_windows",
     "project_analysis_results",
+    "project_student_result",
     "teacher_routing_reasons",
 ]

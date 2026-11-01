@@ -1,11 +1,11 @@
 <template>
-  <div ref="cloudRoot" class="keyword-cloud" role="list" aria-label="关键词词云">
+  <div ref="cloudRoot" class="keyword-cloud">
     <svg
       class="word-cloud-canvas"
       :height="canvasHeight"
       :viewBox="`0 0 ${canvasWidth} ${canvasHeight}`"
       :width="canvasWidth"
-      role="list"
+      role="group"
       aria-label="可筛选关键词词云"
     >
       <g
@@ -57,11 +57,12 @@ const cloudRoot = ref<HTMLElement | null>(null)
 const canvasWidth = ref(640)
 let resizeObserver: ResizeObserver | null = null
 
-const canvasHeight = computed(() => (
-  canvasWidth.value <= 440
-    ? Math.max(460, Math.round(canvasWidth.value * 1.28))
-    : Math.max(520, Math.round(canvasWidth.value * 0.78))
-))
+const canvasHeight = computed(() => {
+  const width = canvasWidth.value
+  return width <= 440
+    ? Math.min(360, Math.max(300, Math.round(width * 0.84)))
+    : Math.min(400, Math.max(340, Math.round(width * 0.55)))
+})
 
 const placements = computed(() => layoutKeywordCloud(props.items, canvasWidth.value, canvasHeight.value))
 

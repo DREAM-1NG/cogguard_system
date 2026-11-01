@@ -1,4 +1,5 @@
 import json
+import socket
 
 import httpx
 import pytest
@@ -11,6 +12,19 @@ def test_classifies_collected_video_and_image_links():
     assert service.classify_media_url("http://sns-video-v3.xhscdn.com/stream/a.mp4?sign=1") == "video"
     assert service.classify_media_url("https://p3-pc-sign.douyinpic.com/obj/tos-cn-i-dy/cover") == "image"
     assert service.classify_media_url("https://example.com/story") is None
+
+
+def test_loopback_proxy_allows_only_trusted_media_fake_ip_hosts(monkeypatch):
+    def fake_getaddrinfo(*_args, **_kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.0.11", 443))]
+
+    monkeypatch.setattr(service.socket, "getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr(service.settings, "MEDIACRAWLER_PROXY", "http://127.0.0.1:7897")
+
+    service.assert_public_media_url("https://www.douyin.com/aweme/v1/play/?video_id=abc")
+
+    with pytest.raises(service.BlockedMediaHostError):
+        service.assert_public_media_url("https://example.com/video.mp4")
 
 
 def test_build_media_filename_is_stable_and_filesystem_safe():
@@ -75,6 +89,39 @@ async def test_download_one_records_http_failure_without_raising(tmp_path, monke
     assert result["status"] == "failed"
     assert result["error"] == "HTTP 403"
     assert not (tmp_path / "blocked.mp4").exists()
+
+
+@pytest.mark.asyncio
+async def test_download_one_retries_transient_stream_failure(tmp_path, monkeypatch):
+    monkeypatch.setattr(service, "assert_public_media_url", lambda url: None)
+    monkeypatch.setattr(service, "MEDIA_DOWNLOAD_MAX_ATTEMPTS", 2)
+    monkeypatch.setattr(service, "MEDIA_DOWNLOAD_RETRY_DELAY_SECONDS", 0)
+    attempts = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise httpx.RemoteProtocolError("connection closed")
+        return httpx.Response(200, content=b"complete-video", headers={"Content-Type": "video/mp4"})
+
+    item = {
+        "platform": "douyin",
+        "post_id": "p1",
+        "post_url": "https://www.douyin.com/video/p1",
+        "author_name": "u",
+        "media_type": "video",
+        "url": "https://www.douyin.com/aweme/v1/play/?video_id=abc",
+        "local_path": str(tmp_path / "retry.mp4"),
+        "status": "pending",
+    }
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await service._download_one(client, item, service.asyncio.Semaphore(1))
+
+    assert result["status"] == "downloaded"
+    assert attempts == 2
+    assert (tmp_path / "retry.mp4").read_bytes() == b"complete-video"
 
 
 def test_build_download_items_filters_platform_type_and_duplicates(tmp_path):

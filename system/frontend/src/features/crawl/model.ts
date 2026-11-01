@@ -43,9 +43,12 @@ export function parseJobSummary(summary: string | null | undefined): { postsCoun
   if (!summary) return { postsCount: 0, commentsCount: 0 }
   try {
     const parsed = JSON.parse(summary) as Record<string, unknown>
+    const stats = parsed.stats && typeof parsed.stats === 'object'
+      ? parsed.stats as Record<string, unknown>
+      : {}
     return {
-      postsCount: Number(parsed.posts_count) || 0,
-      commentsCount: Number(parsed.comments_count) || 0,
+      postsCount: Number(parsed.posts_count ?? stats.unique_posts) || 0,
+      commentsCount: Number(parsed.comments_count ?? stats.unique_comments) || 0,
     }
   } catch {
     return { postsCount: 0, commentsCount: 0 }

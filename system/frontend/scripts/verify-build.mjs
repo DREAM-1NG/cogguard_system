@@ -58,6 +58,11 @@ if (!preloadScriptPath || !builtIndex.includes(`data-cogguard-delivery-preload s
 await access(resolve('dist', preloadScriptPath.replace(/^\//, '')))
 
 const productSource = await readFile(resolve('src/views/risk/index.vue'), 'utf8')
+// Product copy lives in the template. Runtime identifiers may retain their
+// domain names without becoming analyst-facing text.
+const productTemplate = (productSource.match(/<template>([\s\S]*?)<\/template>/)?.[1] || '')
+  // Vue directive expressions are implementation details, not product copy.
+  .replace(/(?:[:@#][\w-]+|v-[\w-]+)="[^"]*"/g, '')
 const forbiddenTerms = [
   'Student',
   'Teacher',
@@ -70,7 +75,7 @@ const forbiddenTerms = [
   'raw_confidence',
   'runtime_status',
 ]
-const leakedTerms = forbiddenTerms.filter((term) => productSource.includes(term))
+const leakedTerms = forbiddenTerms.filter((term) => productTemplate.includes(term))
 if (leakedTerms.length > 0) {
   throw new Error(`Forbidden product terms found in Event Review Case view: ${leakedTerms.join(', ')}`)
 }

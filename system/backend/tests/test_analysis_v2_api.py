@@ -10,7 +10,11 @@ from httpx import ASGITransport, AsyncClient
 
 from app.api.v2.analysis import get_analysis_registry, product_router, router
 from app.api.v2.router import api_router
+from app.config import settings
+from app.core.analysis.query_result_cache import clear_local_query_result_cache
+from app.core.analysis.registry import SEMANTIC_ARTIFACT_KEY, SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY
 from app.core.security import get_current_user
+from app.core.semantic.page_projection import build_semantic_page_read_model
 from app.main import app as main_app
 
 
@@ -78,10 +82,13 @@ class SemanticProjectionRegistry:
     ) -> None:
         self.runs = {str(run["run_id"]): dict(run) for run in runs}
         self.artifacts = dict(artifacts)
+        self.loaded_artifacts: list[tuple[str, str]] = []
+        self.saved_artifacts: list[tuple[str, str, Any]] = []
         self.errors = dict(errors or {})
         self.candidate_roots = list(roots or [])
         self.snapshot_fingerprints = dict(snapshot_fingerprints or {})
         self.current_fingerprints = dict(current_fingerprints or {})
+        self.current_snapshot_calls = 0
 
     @property
     def mongo_db(self):
@@ -92,6 +99,7 @@ class SemanticProjectionRegistry:
         return dict(run) if run is not None else None
 
     async def load_run_artifact(self, run_id: str, artifact_key: str):
+        self.loaded_artifacts.append((run_id, artifact_key))
         error = self.errors.get((run_id, artifact_key))
         if error is not None:
             raise error
@@ -99,6 +107,11 @@ class SemanticProjectionRegistry:
         if value is None:
             raise KeyError(f"missing artifact: {run_id}:{artifact_key}")
         return value
+
+    async def save_run_artifact(self, *, run_id: str, artifact_key: str, payload: Any):
+        self.saved_artifacts.append((run_id, artifact_key, payload))
+        self.artifacts[(run_id, artifact_key)] = payload
+        return {"stored": True, "artifact_key": artifact_key, "payload_sha256": "test-artifact-sha256"}
 
     async def list_semantic_artifact_candidates(self, event_id: str):
         candidates: list[tuple[dict[str, Any], str]] = []
@@ -129,6 +142,7 @@ class SemanticProjectionRegistry:
         )
 
     async def build_current_event_snapshot(self, *, event_id: str, **_kwargs):
+        self.current_snapshot_calls += 1
         fingerprint = self.current_fingerprints[event_id]
         return SimpleNamespace(event_id=event_id, data_fingerprint=fingerprint)
 
@@ -363,6 +377,408 @@ def test_semantic_event_projection_selects_latest_ready_artifact():
                 "layers": {"posts": [], "comments": []},
             },
         }
+
+    asyncio.run(scenario())
+
+
+def test_semantic_page_projection_returns_a_bounded_view_without_full_layers():
+    async def scenario():
+        artifact_key = "stage:semantic_enrichment:result"
+        registry = SemanticProjectionRegistry(
+            runs=[
+                {
+                    "run_id": "run_semantic_page",
+                    "event_id": "event_semantic_page",
+                    "snapshot_id": "snapshot_semantic_page",
+                    "artifact_manifest": {"data_fingerprint": "fingerprint_semantic_page"},
+                }
+            ],
+            artifacts={
+                ("run_semantic_page", artifact_key): _ready_semantic_artifact(
+                    "fingerprint_semantic_page",
+                    layers={
+                        "posts": [
+                            {
+                                "id": "post-1",
+                                "platform": "weibo",
+                                "timestamp": "2026-08-17T00:00:00+00:00",
+                                "text": "可定位内容",
+                                "keywords": [{"term": "事件"}],
+                                "sentiment": {"label": "neutral"},
+                                "stance": {"label": "neutral"},
+                            }
+                        ],
+                        "comments": [],
+                    },
+                    cross_analysis={
+                        "time_slices": [{"date": "2026-08-17", "count": 1}],
+                        "platform_slices": [{"platform": "weibo", "count": 1}],
+                    },
+                )
+            },
+            roots=[_semantic_root("run_semantic_page", "2026-08-17T01:00:00+00:00")],
+            snapshot_fingerprints={"snapshot_semantic_page": "fingerprint_semantic_page"},
+            current_fingerprints={"event_semantic_page": "fingerprint_semantic_page"},
+        )
+        app = _product_app(registry)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(
+                "/api/v2/analysis/events/event_semantic_page/semantic/views/evidence"
+            )
+
+        assert response.status_code == 200
+        assert response.json()["data"] == {
+            "event_id": "event_semantic_page",
+            "run_id": "run_semantic_page",
+            "snapshot_id": "snapshot_semantic_page",
+            "status": "ready",
+            "blocking_reason": None,
+            "view": "evidence",
+            "summary": {"record_count": 1, "platform_count": 1},
+            "content": {
+                "keywords": [{"key": "事件", "label": "事件", "count": 1}],
+                "sentiment": [{"key": "neutral", "label": "neutral", "count": 1}],
+                "stance": [{"key": "neutral", "label": "neutral", "count": 1}],
+            },
+        }
+        assert "layers" not in response.text
+
+    asyncio.run(scenario())
+
+
+def test_semantic_page_projection_reads_persisted_read_model_before_full_artifact():
+    async def scenario():
+        source_sha256 = "semantic-result-sha256"
+        source_artifact = _ready_semantic_artifact(
+            "fingerprint_compact",
+            layers={
+                "posts": [
+                    {
+                        "id": "post-1",
+                        "platform": "weibo",
+                        "keywords": [{"term": "事件"}],
+                        "topics": [{"label": "事件进展"}],
+                        "sentiment": {"label": "neutral"},
+                        "stance": {"label": "neutral"},
+                    }
+                ],
+                "comments": [],
+            },
+            cross_analysis={
+                "time_slices": [{"date": "2026-08-17", "count": 1}],
+                "platform_slices": [{"platform": "weibo", "count": 1}],
+            },
+        )
+        registry = SemanticProjectionRegistry(
+            runs=[
+                {
+                    "run_id": "run_compact",
+                    "event_id": "event_compact",
+                    "snapshot_id": "snapshot_compact",
+                    "artifact_manifest": {
+                        "data_fingerprint": "fingerprint_compact",
+                        "stages": {
+                            "semantic_enrichment": {
+                                "result_artifact": {"payload_sha256": source_sha256},
+                            }
+                        },
+                    },
+                }
+            ],
+            artifacts={
+                (
+                    "run_compact",
+                    SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY,
+                ): build_semantic_page_read_model(
+                    source_artifact,
+                    source_artifact_sha256=source_sha256,
+                ),
+            },
+            roots=[_semantic_root("run_compact", "2026-08-17T01:00:00+00:00")],
+            snapshot_fingerprints={"snapshot_compact": "fingerprint_compact"},
+            current_fingerprints={"event_compact": "fingerprint_compact"},
+        )
+        app = _product_app(registry)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/v2/analysis/events/event_compact/semantic/views/clusters")
+
+        assert response.status_code == 200
+        assert response.json()["data"]["content"] == {
+            "topics": [{"key": "事件进展", "label": "事件进展", "count": 1}],
+            "communities": [],
+        }
+        assert registry.loaded_artifacts == [("run_compact", SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY)]
+        assert ("run_compact", SEMANTIC_ARTIFACT_KEY) not in registry.loaded_artifacts
+
+    asyncio.run(scenario())
+
+
+def test_semantic_workspace_reads_one_compact_projection_before_the_full_artifact():
+    async def scenario():
+        source_sha256 = "semantic-workspace-sha256"
+        source_artifact = _ready_semantic_artifact(
+            "fingerprint_workspace",
+            layers={
+                "posts": [
+                    {
+                        "id": "post-1",
+                        "platform": "weibo",
+                        "timestamp": "2026-08-17T00:00:00+00:00",
+                        "text": "北京事件进展",
+                        "keywords": [{"term": "事件"}],
+                        "topics": [{"label": "事件进展"}],
+                        "sentiment": {"label": "negative"},
+                        "stance": {"label": "contradiction"},
+                        "entities": [{"text": "北京", "label": "LOC"}],
+                    }
+                ],
+                "comments": [],
+            },
+        )
+        registry = SemanticProjectionRegistry(
+            runs=[
+                {
+                    "run_id": "run_workspace",
+                    "event_id": "event_workspace",
+                    "snapshot_id": "snapshot_workspace",
+                    "artifact_manifest": {
+                        "data_fingerprint": "fingerprint_workspace",
+                        "stages": {
+                            "semantic_enrichment": {
+                                "result_artifact": {"payload_sha256": source_sha256},
+                            }
+                        },
+                    },
+                }
+            ],
+            artifacts={
+                (
+                    "run_workspace",
+                    SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY,
+                ): build_semantic_page_read_model(
+                    source_artifact,
+                    source_artifact_sha256=source_sha256,
+                ),
+            },
+            roots=[_semantic_root("run_workspace", "2026-08-17T01:00:00+00:00")],
+            snapshot_fingerprints={"snapshot_workspace": "fingerprint_workspace"},
+            current_fingerprints={"event_workspace": "fingerprint_workspace"},
+        )
+        app = _product_app(registry)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/v2/analysis/events/event_workspace/semantic/workspace")
+
+        assert response.status_code == 200
+        payload = response.json()["data"]
+        assert payload["summary"] == {"record_count": 1, "platform_count": 1}
+        assert payload["content"]["relations"]["entities"][0]["key"] == "LOC:北京"
+        assert payload["content"]["traceable"]["items"][0]["evidence_ref"] == "weibo:post:post-1"
+        assert "layers" not in response.text
+        assert registry.loaded_artifacts == [("run_workspace", SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY)]
+
+    asyncio.run(scenario())
+
+
+def test_semantic_workspace_reprojects_selected_facets_on_the_server():
+    async def scenario():
+        source_sha256 = "semantic-workspace-filter-sha256"
+        source_artifact = _ready_semantic_artifact(
+            "fingerprint_workspace_filter",
+            layers={
+                "posts": [
+                    {
+                        "id": "post-1",
+                        "platform": "weibo",
+                        "timestamp": "2026-08-17T00:00:00+00:00",
+                        "text": "北京事件进展",
+                        "keywords": [{"term": "事件"}],
+                        "topics": [{"label": "事件进展"}],
+                        "sentiment": {"label": "negative"},
+                        "stance": {"label": "contradiction"},
+                        "entities": [{"text": "北京", "label": "LOC"}],
+                    },
+                    {
+                        "id": "post-2",
+                        "platform": "xhs",
+                        "timestamp": "2026-08-17T00:00:00+00:00",
+                        "text": "上海事件进展",
+                        "keywords": [{"term": "事件"}],
+                        "topics": [{"label": "事件进展"}],
+                        "sentiment": {"label": "positive"},
+                        "stance": {"label": "entailment"},
+                        "entities": [{"text": "上海", "label": "LOC"}],
+                    },
+                ],
+                "comments": [],
+            },
+        )
+        registry = SemanticProjectionRegistry(
+            runs=[
+                {
+                    "run_id": "run_workspace_filter",
+                    "event_id": "event_workspace_filter",
+                    "snapshot_id": "snapshot_workspace_filter",
+                    "artifact_manifest": {
+                        "data_fingerprint": "fingerprint_workspace_filter",
+                        "stages": {
+                            "semantic_enrichment": {
+                                "result_artifact": {"payload_sha256": source_sha256},
+                            }
+                        },
+                    },
+                }
+            ],
+            artifacts={("run_workspace_filter", SEMANTIC_ARTIFACT_KEY): source_artifact},
+            roots=[_semantic_root("run_workspace_filter", "2026-08-17T01:00:00+00:00")],
+            snapshot_fingerprints={"snapshot_workspace_filter": "fingerprint_workspace_filter"},
+            current_fingerprints={"event_workspace_filter": "fingerprint_workspace_filter"},
+        )
+        app = _product_app(registry)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(
+                "/api/v2/analysis/events/event_workspace_filter/semantic/workspace",
+                params={"entity": "LOC:北京"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()["data"]
+        assert payload["summary"] == {"record_count": 1, "platform_count": 1}
+        assert payload["content"]["evidence"]["sentiment"] == [
+            {"key": "negative", "label": "negative", "count": 1}
+        ]
+        assert payload["content"]["traceable"]["total"] == 1
+        assert ("run_workspace_filter", SEMANTIC_ARTIFACT_KEY) in registry.loaded_artifacts
+        assert "layers" not in response.text
+
+    asyncio.run(scenario())
+
+
+def test_semantic_workspace_reuses_a_filtered_projection_without_reloading_the_source_artifact(monkeypatch):
+    async def scenario():
+        monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_REDIS_ENABLED", False)
+        monkeypatch.setattr(settings, "SEMANTIC_ARTIFACT_FRESHNESS_CACHE_TTL_SECONDS", 60)
+        clear_local_query_result_cache()
+        source_sha256 = "semantic-workspace-filter-cache-sha256"
+        source_artifact = _ready_semantic_artifact(
+            "fingerprint_workspace_filter_cache",
+            layers={
+                "posts": [
+                    {
+                        "id": "post-1",
+                        "platform": "weibo",
+                        "timestamp": "2026-08-17T00:00:00+00:00",
+                        "text": "北京事件进展",
+                        "keywords": [{"term": "事件"}],
+                        "topics": [{"label": "事件进展"}],
+                        "sentiment": {"label": "negative"},
+                        "stance": {"label": "contradiction"},
+                        "entities": [{"text": "北京", "label": "LOC"}],
+                    }
+                ],
+                "comments": [],
+            },
+        )
+        registry = SemanticProjectionRegistry(
+            runs=[
+                {
+                    "run_id": "run_workspace_filter_cache",
+                    "event_id": "event_workspace_filter_cache",
+                    "snapshot_id": "snapshot_workspace_filter_cache",
+                    "artifact_manifest": {
+                        "data_fingerprint": "fingerprint_workspace_filter_cache",
+                        "stages": {
+                            "semantic_enrichment": {
+                                "result_artifact": {"payload_sha256": source_sha256},
+                            }
+                        },
+                    },
+                }
+            ],
+            artifacts={
+                ("run_workspace_filter_cache", SEMANTIC_ARTIFACT_KEY): source_artifact,
+                (
+                    "run_workspace_filter_cache",
+                    SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY,
+                ): build_semantic_page_read_model(
+                    source_artifact,
+                    source_artifact_sha256=source_sha256,
+                ),
+            },
+            roots=[_semantic_root("run_workspace_filter_cache", "2026-08-17T01:00:00+00:00")],
+            snapshot_fingerprints={"snapshot_workspace_filter_cache": "fingerprint_workspace_filter_cache"},
+            current_fingerprints={"event_workspace_filter_cache": "fingerprint_workspace_filter_cache"},
+        )
+        app = _product_app(registry)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            first = await client.get(
+                "/api/v2/analysis/events/event_workspace_filter_cache/semantic/workspace",
+                params={"entity": "LOC:北京"},
+            )
+            second = await client.get(
+                "/api/v2/analysis/events/event_workspace_filter_cache/semantic/workspace",
+                params={"entity": "LOC:北京"},
+            )
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert registry.loaded_artifacts.count(("run_workspace_filter_cache", SEMANTIC_ARTIFACT_KEY)) == 1
+        assert registry.current_snapshot_calls == 1
+
+    asyncio.run(scenario())
+
+
+def test_semantic_page_projection_backfills_a_read_model_after_verified_legacy_read():
+    async def scenario():
+        source_sha256 = "legacy-semantic-result-sha256"
+        source_artifact = _ready_semantic_artifact(
+            "fingerprint_legacy",
+            layers={
+                "posts": [
+                    {
+                        "id": "post-legacy",
+                        "platform": "weibo",
+                        "keywords": [{"term": "事件"}],
+                        "topics": [{"label": "事件进展"}],
+                        "sentiment": {"label": "neutral"},
+                        "stance": {"label": "neutral"},
+                    }
+                ],
+                "comments": [],
+            },
+            cross_analysis={
+                "time_slices": [{"date": "2026-08-17", "count": 1}],
+                "platform_slices": [{"platform": "weibo", "count": 1}],
+            },
+        )
+        registry = SemanticProjectionRegistry(
+            runs=[
+                {
+                    "run_id": "run_legacy",
+                    "event_id": "event_legacy",
+                    "snapshot_id": "snapshot_legacy",
+                    "artifact_manifest": {
+                        "data_fingerprint": "fingerprint_legacy",
+                        "stages": {
+                            "semantic_enrichment": {
+                                "result_artifact": {"payload_sha256": source_sha256},
+                            }
+                        },
+                    },
+                }
+            ],
+            artifacts={("run_legacy", SEMANTIC_ARTIFACT_KEY): source_artifact},
+            roots=[_semantic_root("run_legacy", "2026-08-17T01:00:00+00:00")],
+            snapshot_fingerprints={"snapshot_legacy": "fingerprint_legacy"},
+            current_fingerprints={"event_legacy": "fingerprint_legacy"},
+        )
+        app = _product_app(registry)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/v2/analysis/events/event_legacy/semantic/views/evidence")
+
+        assert response.status_code == 200
+        assert registry.saved_artifacts[0][0:2] == ("run_legacy", SEMANTIC_PAGE_READ_MODEL_ARTIFACT_KEY)
+        assert registry.saved_artifacts[0][2]["source_artifact_sha256"] == source_sha256
+        assert "layers" not in registry.saved_artifacts[0][2]
 
     asyncio.run(scenario())
 
